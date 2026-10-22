@@ -17,8 +17,9 @@ evals/private/
 # /improve proposals are reviewed, then merged or discarded by the Author
 evals/proposals/
 
-# Generated manuscripts and local story projects
+# Generated manuscripts and local story projects (the /new-story default folder included)
 projects/
+stories/
 *.local.md
 
 # Editor and OS noise

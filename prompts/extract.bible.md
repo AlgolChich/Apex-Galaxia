@@ -1,5 +1,6 @@
 ---
 task: extract.bible
+window: none
 kind: extraction
 role: extract
 output: json:bible-proposals

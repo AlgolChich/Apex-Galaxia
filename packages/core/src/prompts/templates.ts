@@ -15,6 +15,8 @@ const TemplateFrontSchema = z.object({
   /** Name of the output-contract template placed in the system prompt (Section 10.2, layer 4). */
   contract: z.string().optional(),
   contract_only: z.boolean().default(false),
+  /** `none` when the body embeds the chapter itself (`{{chapter_text}}`), so the window layer is not added a second time. */
+  window: z.enum(['full', 'none']).default('full'),
 });
 
 export interface PromptTemplate {
@@ -26,6 +28,7 @@ export interface PromptTemplate {
   jsonSchemaName: string | undefined;
   lessons: z.infer<typeof TemplateFrontSchema>['lessons'];
   contract: string | undefined;
+  window: 'full' | 'none';
   /** Body with partials expanded but placeholders intact. */
   body: string;
   /** Placeholders found in the body, without braces. */
@@ -68,6 +71,7 @@ export class PromptLibrary {
       jsonSchemaName: front.data.output.startsWith('json:') ? front.data.output.slice(5) : undefined,
       lessons: front.data.lessons,
       contract: front.data.contract,
+      window: front.data.window,
       body,
       placeholders,
       source: file,

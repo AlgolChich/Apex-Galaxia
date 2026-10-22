@@ -1,5 +1,6 @@
 ---
 task: chronicle.propose
+window: none
 kind: extraction
 role: extract
 output: json:chronicle-proposal

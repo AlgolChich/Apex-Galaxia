@@ -6,12 +6,15 @@ placing a copy in `~/.apex-galaxia/prompts/<task>.md` (or under `APEX_GALAXIA_HO
 
 ## Templates
 
-One file per task with YAML front matter (`task`, `kind`, `role`, `output`, `contract`, `lessons`)
+One file per task with YAML front matter (`task`, `kind`, `role`, `output`, `contract`, `lessons`, `window`)
 and a body with `{{placeholders}}`. `kind` selects sampling behavior through the adapter
 (ADR 0006); `role` selects the configured model (`plan`, `prose`, `critic`, `extract`, `summary`,
 `lint`); `output` is `prose`, `markdown` or `json:<schema>` where the schema name comes from
 `packages/core/schemas/`; `contract` names the output-contract template placed in the system
-prompt; `lessons` lists the categories retrieved for the task.
+prompt; `lessons` lists the categories retrieved for the task. `window: none` marks a template whose body embeds the
+chapter itself (`{{chapter_text}}`: `summary.chapter`, `chronicle.propose`, `check.bible`,
+`extract.bible`), so the assembler does not add the manuscript window a second time; alias
+activation still scans the chapter.
 
 | Task | Role | Output | Purpose |
 | --- | --- | --- | --- |

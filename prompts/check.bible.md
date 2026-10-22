@@ -1,5 +1,6 @@
 ---
 task: check.bible
+window: none
 kind: critique
 role: critic
 output: json:critic-result

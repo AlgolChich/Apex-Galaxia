@@ -1,5 +1,6 @@
 ---
 task: summary.chapter
+window: none
 kind: summary
 role: summary
 output: prose

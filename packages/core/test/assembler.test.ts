@@ -111,6 +111,17 @@ describe('context assembler', () => {
     expect(text).toContain('window');
   });
 
+  it('omits the window layer when the template embeds the chapter itself (window: none)', async () => {
+    const ch = await store.createChapter(1, 'Старые друзья', 'Скаут вошёл в ангар. Медик ждал его.\n');
+    const summary = await assemblePrompt(await deps(), { task: 'summary.chapter', chapter: ch, vars: { chapter_text: ch.body } });
+    expect(summary.inspector.layers.find((l) => l.name === 'window')).toBeUndefined();
+    const user = summary.messages[0]!.content;
+    expect(user.split('Скаут вошёл в ангар').length - 1).toBe(1);
+    expect(summary.inspector.bible.find((b) => b.slug === 'skaut')?.reason).toBe('alias');
+    const proposal = await assemblePrompt(await deps(), { task: 'chronicle.propose', chapter: ch, vars: { chapter_text: ch.body } });
+    expect(proposal.inspector.layers.find((l) => l.name === 'window')).toBeUndefined();
+  });
+
   it('gives the planner the hidden state and Randy\'s roll, and never the writer', async () => {
     store.config.storyteller = 'randy';
     await store.saveConfig();

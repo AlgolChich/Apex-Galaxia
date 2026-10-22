@@ -248,7 +248,7 @@ export async function assemblePrompt(deps: AssembleDeps, request: AssembleReques
   };
 
   addPart('instruction', 0, [{ text: instruction, action: 'kept' }]);
-  if (windowFull) {
+  if (windowFull && template.window !== 'none') {
     const variants: Part['variants'] = [{ text: windowFull, action: 'kept' }];
     for (const keep of [6000, 3000, 1500, 700]) {
       if (current && countWords(before) > keep) {

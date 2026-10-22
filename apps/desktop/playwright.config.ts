@@ -14,6 +14,9 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 15_000 },
   retries: process.env['CI'] ? 1 : 0,
+  // One sidecar, one open project at a time: the specs must not overlap.
+  workers: 1,
+  fullyParallel: false,
   reporter: process.env['CI'] ? [['github'], ['list']] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:1420',

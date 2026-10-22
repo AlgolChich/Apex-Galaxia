@@ -19,17 +19,23 @@ test.describe('wizard to chapter (browser, scripted model)', () => {
     await page.getByRole('button', { name: /^(New story|Новая история)$/ }).click();
     await page.getByLabel(/^(Title|Название)/).fill('Штрек');
     await page.getByLabel(/^(Folder|Папка)/).fill(root);
+    // Every other step keeps its defaults: Next until the summary offers to create the project.
     const next = page.getByRole('button', { name: /^(Next|Дальше)$/ });
-    for (let i = 0; i < 12 && (await next.count()) > 0; i += 1) {
+    const create = page.getByRole('button', { name: /^(Create project|Создать проект)$/ });
+    for (let i = 0; i < 14 && !(await create.isVisible()); i += 1) {
       await next.click();
+      await page.waitForTimeout(150);
     }
-    await page.getByRole('button', { name: /^(Create project|Создать проект)$/ }).click();
+    await expect(create).toBeVisible();
+    await create.click();
 
     // The project is open: the tree, the title, project.yaml on disk with the defaults.
     const tree = page.getByRole('navigation', { name: /Project tree|Дерево проекта/ });
     await expect(tree).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => fs.existsSync(path.join(root, 'project.yaml')), { timeout: 15_000 }).toBe(true);
-    expect(fs.readFileSync(path.join(root, 'project.yaml'), 'utf8')).toContain('storyteller: cassandra');
+    const projectYaml = fs.readFileSync(path.join(root, 'project.yaml'), 'utf8');
+    expect(projectYaml).toContain('storyteller: cassandra');
+    expect(projectYaml).toContain('harshness: 3');
 
     // Write a whole chapter from the palette (plan + prose, both from the scripted model).
     await page.keyboard.press('Control+k');
@@ -43,9 +49,10 @@ test.describe('wizard to chapter (browser, scripted model)', () => {
 
     const accept = page.getByRole('button', { name: /^(Accept|Принять)$/ });
     await expect(accept).toBeVisible({ timeout: 90_000 });
-    expect(fs.existsSync(path.join(root, 'chapters'))).toBe(false);
+    const chapterCount = () => (fs.existsSync(path.join(root, 'chapters')) ? fs.readdirSync(path.join(root, 'chapters')).length : 0);
+    expect(chapterCount()).toBe(0);
     await accept.click();
-    await expect.poll(() => fs.existsSync(path.join(root, 'chapters')) && fs.readdirSync(path.join(root, 'chapters')).length, { timeout: 30_000 }).toBe(1);
+    await expect.poll(chapterCount, { timeout: 30_000 }).toBe(1);
     const chapterFile = path.join(root, 'chapters', fs.readdirSync(path.join(root, 'chapters'))[0]!);
     expect(fs.readFileSync(chapterFile, 'utf8')).toContain('title: Фары');
 
@@ -55,7 +62,7 @@ test.describe('wizard to chapter (browser, scripted model)', () => {
     await expect(apply).toBeVisible({ timeout: 60_000 });
     await apply.click();
     await expect.poll(() => fs.readFileSync(path.join(root, 'chronicle', 'state.yaml'), 'utf8'), { timeout: 30_000 }).toContain('last_chapter: 1');
-    expect(fs.readFileSync(path.join(root, 'chronicle', 'chronicle.md'), 'utf8')).toContain('## Глава 1');
+    expect(fs.readFileSync(path.join(root, 'chronicle', 'chronicle.md'), 'utf8')).toMatch(/## (Глава|Chapter) 1/);
     const summarize = page.getByRole('button', { name: /^(Summarize|Суммировать)$/ });
     await expect(summarize).toBeVisible({ timeout: 15_000 });
     await summarize.click();

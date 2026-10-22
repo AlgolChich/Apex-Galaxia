@@ -492,3 +492,19 @@ textarea.outline {
   border-radius: var(--radius-lg);
   background: var(--bg-elev);
 }
+
+/* ---- The ASK gate ---------------------------------------------------------------------- */
+.run-decision {
+  border-color: var(--warning);
+  gap: 0.6rem;
+}
+
+.run-decision__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.run-decision__items {
+  font-family: var(--font-prose);
+  font-size: 1.05em;
+}

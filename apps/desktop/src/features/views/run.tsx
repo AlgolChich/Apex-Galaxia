@@ -5,22 +5,75 @@ import { useT } from '../../i18n/index.js';
 import { useStore } from '../../state/store.js';
 import { Field, hintId } from '../wizard/field.js';
 import { ViewFrame, messageOf } from './frame.js';
-import { useRunStore } from './run-store.js';
+import { useRunStore, type PendingDecision } from './run-store.js';
 
 function when(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
 }
 
+/** `plan/beats/<nn>.json`, the file the Author edits to change the choices instead of approving them. */
+function beatsFile(chapter: number): string {
+  return `plan/beats/${String(chapter).padStart(2, '0')}.json`;
+}
+
+interface StartOptions {
+  chapters?: number;
+  resume?: string;
+  approve_outline?: boolean;
+  approve_decision?: boolean;
+  reader_report?: boolean;
+}
+
+/**
+ * The ASK gate (Section 5.9): the run stopped before writing a chapter whose beat sheet
+ * lists choices the story cannot take back. The Author approves and the run continues,
+ * goes to the plan to edit the beat sheet (and resumes without approval), or leaves the run
+ * paused where it is.
+ */
+function DecisionCard({ decision, busy, onApprove, onEdit, onStop }: { decision: PendingDecision; busy: boolean; onApprove: () => void; onEdit: () => void; onStop: () => void }) {
+  const t = useT();
+  const titleId = `run-decision-${decision.chapter}`;
+  return (
+    <section className="card stack run-decision" role="region" aria-labelledby={titleId} data-testid="run-decision">
+      <h2 id={titleId} className="run-decision__title">
+        {t('views.run.decision.title', { n: decision.chapter })}
+      </h2>
+      <div className="view__hint">{t('views.run.decision.hint', { file: beatsFile(decision.chapter) })}</div>
+      <ul className="plain-list run-decision__items" aria-label={t('views.run.decision.items')}>
+        {decision.items.map((item, index) => (
+          <li key={index}>
+            <strong>{item.who}</strong>: {item.what}
+          </li>
+        ))}
+      </ul>
+      <div className="row" style={{ flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn--primary" onClick={onApprove} disabled={busy} data-autofocus>
+          {t('views.run.decision.approve')}
+        </button>
+        <button type="button" className="btn" onClick={onEdit} disabled={busy}>
+          {t('views.run.decision.edit')}
+        </button>
+        <span className="grow" />
+        <button type="button" className="btn btn--ghost" onClick={onStop} disabled={busy}>
+          {t('views.run.decision.stop')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 /**
  * The autonomous mode screen (Section 11.4): a start form, the saved runs with Resume and
  * Approve outline, and the live run with status, stage, chapter N of M, cost so far, the log,
  * the streaming text and Pause. Run events arrive as MCP logging notifications while the
- * view is mounted; the final event refreshes the run list and the project chapters.
+ * view is mounted; the final event refreshes the run list and the project chapters. A run
+ * waiting at the ASK gate shows the decision card on top.
  */
 export function RunView() {
   const t = useT();
   const toast = useStore((s) => s.toast);
+  const setView = useStore((s) => s.setView);
   const config = useStore((s) => s.project.config);
   const model = useStore((s) => s.connection.model);
   const reloadChapters = useStore((s) => s.reloadChapters);
@@ -30,6 +83,8 @@ export function RunView() {
   const watch = useRunStore((s) => s.watch);
   const applyEvent = useRunStore((s) => s.applyEvent);
   const setPausing = useRunStore((s) => s.setPausing);
+  const dismissDecision = useRunStore((s) => s.dismissDecision);
+  const reopenDecision = useRunStore((s) => s.reopenDecision);
   const client = getClient();
   const [chapters, setChapters] = useState('1');
   const [readerReport, setReaderReport] = useState(false);
@@ -59,7 +114,7 @@ export function RunView() {
     });
   }, [client, applyEvent, refresh, reloadChapters]);
 
-  const start = async (options: { chapters?: number; resume?: string; approve_outline?: boolean; reader_report?: boolean }) => {
+  const start = async (options: StartOptions) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -96,10 +151,20 @@ export function RunView() {
     }
   };
 
+  const approveDecision = (id: string) => void start({ resume: id, approve_decision: true, reader_report: readerReport });
+
+  const editPlan = (decision: PendingDecision) => {
+    toast('info', t('views.run.decision.editToast', { file: beatsFile(decision.chapter) }));
+    setView('plan');
+  };
+
   const statusLabel = (status: RunState['status'] | undefined) => (status ? t(`views.run.status.${status}`) : '—');
   const stageLabel = (stage: RunState['stage'] | undefined) => (stage ? t(`views.run.stage.${stage}`) : '—');
   const cost = (usd: number | undefined) => t('views.run.cost', { usd: (usd ?? 0).toFixed(3) });
   const running = live?.status === 'running' && !live.final;
+  const awaiting = live?.status === 'awaiting_decision' && live.pendingDecision ? live.pendingDecision : undefined;
+  // The server's final event also closes a run that stopped at a gate; a gate is a pause, not a finish.
+  const atGate = live?.status === 'awaiting_decision' || live?.status === 'awaiting_outline_approval';
 
   const actions = (
     <button type="button" className="btn btn--ghost" onClick={() => void refresh()}>
@@ -116,6 +181,8 @@ export function RunView() {
         </div>
       ) : null}
       {!model?.has_model ? <div className="view__warning small">{t('views.run.noModel')}</div> : null}
+
+      {live && awaiting && live.decisionOpen ? <DecisionCard decision={awaiting} busy={busy} onApprove={() => approveDecision(live.id)} onEdit={() => editPlan(awaiting)} onStop={() => dismissDecision(live.id)} /> : null}
 
       <form
         className="card run-form"
@@ -168,6 +235,11 @@ export function RunView() {
                 {t('views.run.approve')}
               </button>
             ) : null}
+            {awaiting && !live.decisionOpen ? (
+              <button type="button" className="btn btn--primary" onClick={() => reopenDecision(live.id)} disabled={busy}>
+                {t('views.run.decide')}
+              </button>
+            ) : null}
           </div>
           <div className="run-stats" role="status">
             <div className="run-stats__item">
@@ -180,7 +252,7 @@ export function RunView() {
             </div>
             <div className="run-stats__item">
               <span className="run-stats__label">{t('common.chapter')}</span>
-              <span>{!live.final && live.nextChapter !== undefined ? t('views.run.chapterN', { n: live.nextChapter }) : '—'}</span>
+              <span>{(!live.final || atGate) && live.nextChapter !== undefined ? t('views.run.chapterN', { n: live.nextChapter }) : '—'}</span>
             </div>
             <div className="run-stats__item">
               <span className="run-stats__label">{t('views.run.done')}</span>
@@ -192,7 +264,8 @@ export function RunView() {
             </div>
           </div>
           {live.status === 'awaiting_outline_approval' ? <div className="view__hint">{t('views.run.approveHint')}</div> : null}
-          {live.final ? <div className={live.status === 'failed' ? 'view__error' : 'view__ok'}>{t('views.run.finished', { status: statusLabel(live.status) })}</div> : null}
+          {awaiting ? <div className="view__hint">{t('views.run.decision.waiting', { n: awaiting.chapter })}</div> : null}
+          {live.final && !atGate ? <div className={live.status === 'failed' ? 'view__error' : 'view__ok'}>{t('views.run.finished', { status: statusLabel(live.status) })}</div> : null}
           {live.error ? (
             <div className="view__error" role="alert">
               {t('views.run.error', { error: live.error })}
@@ -226,7 +299,7 @@ export function RunView() {
           {[...runs].reverse().map((run) => (
             <li key={run.id} className={`run-row${live?.id === run.id ? ' run-row--live' : ''}`} role="listitem">
               <span className="mono">{run.id}</span>
-              <span className="badge">{statusLabel(run.status)}</span>
+              <span className={`badge${run.status === 'awaiting_decision' ? ' badge--warn' : ''}`}>{statusLabel(run.status)}</span>
               <span className="small muted">{t('views.run.completed', { done: run.completed.length, total: run.target_chapters })}</span>
               <span className="small muted">{cost(run.cost_usd)}</span>
               <span className="small muted">{t('views.run.started', { when: when(run.started_at) })}</span>
@@ -239,6 +312,11 @@ export function RunView() {
               {run.status === 'awaiting_outline_approval' ? (
                 <button type="button" className="btn small btn--primary" onClick={() => void start({ resume: run.id, approve_outline: true })} disabled={busy || running}>
                   {t('views.run.approve')}
+                </button>
+              ) : null}
+              {run.status === 'awaiting_decision' ? (
+                <button type="button" className="btn small btn--primary" onClick={() => void show(run)} disabled={busy || running} aria-label={`${t('views.run.decide')}: ${run.id}`}>
+                  {t('views.run.decide')}
                 </button>
               ) : null}
               <button type="button" className="btn btn--ghost small" onClick={() => void show(run)} aria-label={`${t('views.run.show')}: ${run.id}`}>

@@ -107,7 +107,8 @@ describe('ChronicleView', () => {
     });
     render(<ChronicleView />);
     const timeline = await screen.findByRole('list', { name: 'Timeline' });
-    const items = within(timeline).getAllByRole('listitem');
+    // The list renders before chronicle_get resolves, so wait for its items rather than the list.
+    const items = await within(timeline).findAllByRole('listitem');
     expect(items.map((i) => i.textContent)).toEqual(['Глава 2Вторая.', 'Глава 1Первая.']);
     expect(screen.getByText('4 октября, утро')).toBeTruthy();
     expect(screen.getAllByText('planner only, hidden from readers')).toHaveLength(2);

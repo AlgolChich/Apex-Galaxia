@@ -70,7 +70,7 @@ describe('prepare / submit without a model', () => {
     const store = await createProject(root, { title: 'T', language: 'ru' });
     await expect(saveResearch(store, 'no front matter')).rejects.toMatchObject({ code: 'INVALID_FILE' });
     const saved = await saveResearch(store, '---\nsources:\n  - url: https://example.org\n---\nBody.', 'Пулемётчик');
-    expect(saved.path.endsWith('bible/research/pulemyotchik.md')).toBe(true);
+    expect(saved.path.replace(/\\/g, '/').endsWith('bible/research/pulemyotchik.md')).toBe(true);
     expect(saved.front.sources[0]?.kind).toBe('other');
   });
 });

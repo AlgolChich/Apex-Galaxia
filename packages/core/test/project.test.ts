@@ -206,7 +206,7 @@ describe('JSON schemas', () => {
     const schemasDir = path.resolve(__dirname, '..', 'schemas');
     for (const [name, json] of renderJsonSchemas()) {
       const file = path.join(schemasDir, `${name}.schema.json`);
-      const committed = await fs.readFile(file, 'utf8');
+      const committed = (await fs.readFile(file, 'utf8')).replace(/\r\n/g, '\n');
       expect(committed, `${name}.schema.json is stale; run pnpm schemas`).toBe(json);
     }
   });

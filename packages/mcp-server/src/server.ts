@@ -718,7 +718,7 @@ export class ApexMcpServer {
           const vars: Record<string, string> = {};
           for (const key of ['percent', 'tone', 'instruction', 'viewpoint', 'pov', 'tense'] as const) if (input[key]) vars[key] = input[key]!;
           const result = await harness.rewrite(input.op, input.passage, vars);
-          return ok({ text: result.text, diff: result.diff, lint: result.lint }, result.text);
+          return ok({ text: result.text, diff: result.diff, lint: result.lint, model: result.run.result.model, costUsd: result.run.result.costUsd }, result.text);
         } catch (error) {
           return fail(error);
         }
@@ -904,7 +904,7 @@ export class ApexMcpServer {
         try {
           const harness = await this.getHarness();
           const result = await harness.weave(paragraph, detail);
-          return ok({ text: result.text, diff: result.diff, lint: result.lint }, result.text);
+          return ok({ text: result.text, diff: result.diff, lint: result.lint, model: result.run.result.model, costUsd: result.run.result.costUsd }, result.text);
         } catch (error) {
           return fail(error);
         }

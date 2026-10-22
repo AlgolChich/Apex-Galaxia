@@ -37,6 +37,7 @@ export function TopBar() {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || !(event.ctrlKey || event.metaKey) || event.altKey) return;
       const state = useStore.getState();
+      if (state.ui.paletteOpen) return;
       if (!event.shiftKey && /^[1-6]$/.test(event.key)) {
         const target = VIEWS[Number(event.key) - 1];
         if (target && state.project.root) {

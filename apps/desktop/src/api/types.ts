@@ -163,6 +163,8 @@ export interface RewriteResult {
   text: string;
   diff: DiffBlock[];
   lint: LintReport;
+  model?: string;
+  costUsd?: number;
 }
 
 export interface DescribeOption {

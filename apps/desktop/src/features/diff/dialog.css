@@ -1,0 +1,124 @@
+/* Shared modal shell: backdrop, panel, header. Every dialog of the action features uses it. */
+.dlg-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 1rem 2rem;
+  background: color-mix(in srgb, var(--fg) 32%, transparent);
+  overflow: auto;
+}
+
+.dlg {
+  width: min(44rem, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  outline: none;
+}
+
+.dlg--wide {
+  width: min(64rem, 100%);
+}
+
+.dlg--narrow {
+  width: min(32rem, 100%);
+}
+
+.dlg__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dlg__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.dlg__body {
+  padding: 0.9rem 1rem 1rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.dlg__footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.dlg__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dlg__field > label,
+.dlg__field > .label {
+  font-size: 0.85em;
+  color: var(--fg-muted);
+}
+
+.dlg__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+
+.dlg__warning {
+  color: var(--warning);
+}
+
+.dlg__error {
+  color: var(--danger);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.1em 0.5em;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  font-size: 0.8em;
+  color: var(--fg-muted);
+}
+
+.chip--error {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.chip--warning {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.chip--info {
+  color: var(--info);
+  border-color: var(--info);
+}
+
+.chip--success {
+  color: var(--success);
+  border-color: var(--success);
+}

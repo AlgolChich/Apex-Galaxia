@@ -12,7 +12,6 @@ import type {
   ChronicleState,
   CriticResult,
   DescribeOption,
-  DiffBlock,
   Direction,
   EntryKind,
   Estimate,
@@ -224,7 +223,7 @@ export class ApexClient {
     return this.call('rewrite', { op, passage, ...vars });
   }
 
-  weave(paragraph: string, detail: string): Promise<{ text: string; diff: DiffBlock[]; lint: LintReport }> {
+  weave(paragraph: string, detail: string): Promise<RewriteResult> {
     return this.call('weave', { paragraph, detail });
   }
 

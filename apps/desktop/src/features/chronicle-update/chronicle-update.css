@@ -1,0 +1,32 @@
+/* Chronicle update: proposal review before chronicle_apply. */
+.chrup__summary {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  white-space: pre-wrap;
+}
+
+.chrup__hidden {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--warning) 8%, var(--bg-elev));
+  white-space: pre-wrap;
+}
+
+.chrup__ops {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chrup__busy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

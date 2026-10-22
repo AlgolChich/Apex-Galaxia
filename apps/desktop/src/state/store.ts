@@ -26,6 +26,8 @@ export interface PendingSuggestion {
   /** Where the continuation attaches in the chapter body (chapter mode: a new chapter). */
   cursor: number | undefined;
   chapterNumber: number | undefined;
+  /** The params of the write that produced it, so Retry resends the same beat, card or title. */
+  params: { instruction?: string; targetWords?: number; title?: string };
 }
 
 export interface StreamState {
@@ -311,7 +313,18 @@ export const useStore = create<AppState>((set, get) => ({
       }
       set((s) => ({
         suggestion: {
-          pending: { front: result.suggestion, text: result.text, lint: result.lint, costUsd: result.costUsd, model: result.model, warnings: result.warnings ?? [], mode, cursor, chapterNumber },
+          pending: {
+            front: result.suggestion,
+            text: result.text,
+            lint: result.lint,
+            costUsd: result.costUsd,
+            model: result.model,
+            warnings: result.warnings ?? [],
+            mode,
+            cursor,
+            chapterNumber,
+            params: { ...(params.instruction ? { instruction: params.instruction } : {}), ...(params.targetWords ? { targetWords: params.targetWords } : {}), ...(params.title ? { title: params.title } : {}) },
+          },
           stream: { ...s.suggestion.stream, active: false, abort: undefined },
         },
       }));
@@ -355,9 +368,9 @@ export const useStore = create<AppState>((set, get) => ({
     if (!pending) return;
     await get().discardSuggestion();
     if (pending.mode === 'chapter') {
-      await get().write('chapter', { ...(pending.chapterNumber !== undefined ? { chapterNumber: pending.chapterNumber } : {}), ...(note ? { instruction: note } : {}) });
+      await get().write('chapter', { ...pending.params, ...(pending.chapterNumber !== undefined ? { chapterNumber: pending.chapterNumber } : {}), ...(note ? { instruction: note } : {}) });
     } else {
-      await get().write(note ? 'guided' : pending.mode, note ? { instruction: note } : {});
+      await get().write(note ? 'guided' : pending.mode, { ...pending.params, ...(note ? { instruction: note } : {}) });
     }
   },
 

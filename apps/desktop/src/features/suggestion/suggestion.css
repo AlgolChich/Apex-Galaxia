@@ -1,0 +1,113 @@
+/* The inline suggestion block under the editor: streaming, pending, after-accept bar. */
+.sug {
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  bottom: 0.75rem;
+  max-height: 55%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  z-index: 20;
+}
+
+.sug--collapsed {
+  max-height: none;
+}
+
+.sug__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85em;
+  color: var(--fg-muted);
+}
+
+.sug--collapsed .sug__head {
+  border-bottom: 0;
+}
+
+.sug__body {
+  overflow: auto;
+  min-height: 0;
+  padding: 0.75rem 1rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sug__stream {
+  white-space: pre-wrap;
+}
+
+.sug__caret {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  margin-left: 1px;
+  animation: sug-blink 1s steps(2, start) infinite;
+}
+
+@keyframes sug-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.sug__text {
+  width: 100%;
+  min-height: 8em;
+  max-height: 40vh;
+  resize: vertical;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  padding: 0.25rem 0.4rem;
+  white-space: pre-wrap;
+}
+
+.sug__text:hover,
+.sug__text:focus {
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+.sug__lint ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.sug__warning {
+  color: var(--warning);
+}
+
+.sug__foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.8rem 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.sug__note {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.sug__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.8rem;
+}

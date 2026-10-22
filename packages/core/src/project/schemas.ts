@@ -59,6 +59,16 @@ export const BudgetSchema = z.object({
   warn_at_usd: z.number().nonnegative().nullable().default(null),
 });
 
+/** The Muse Layer stages (Section 4.6); the preset fills the defaults, these override. */
+export const MuseSchema = z.object({
+  /** Run the critic pass after each prose generation. */
+  critic: z.boolean().optional(),
+  /** Bounded revision loop: at most this many passes, each fixing only what the critic quoted. */
+  max_revisions: z.number().int().min(0).max(2).optional(),
+  /** Stop revising when every rubric score reaches this value. */
+  min_score: z.number().int().min(1).max(5).optional(),
+});
+
 export const WindowSchema = z.object({
   /** Words of the previous chapter's tail included with the current chapter (10.4). */
   previous_tail_words: z.number().int().nonnegative().default(1500),
@@ -86,6 +96,7 @@ export const ProjectConfigSchema = z
     spelling: z.enum(['us', 'uk']).default('us'),
     original_characters: z.enum(['no', 'yes', 'narrator']).default('no'),
     preset: PresetSchema.default('balanced'),
+    muse: MuseSchema.optional(),
     models: ModelRolesSchema.prefault({}),
     budget: BudgetSchema.prefault({}),
     window: WindowSchema.prefault({}),
@@ -464,6 +475,38 @@ export const BibleProposalsSchema = z.object({
 });
 export type BibleProposals = z.infer<typeof BibleProposalsSchema>;
 
+/** One line per chapter, without the main twist (Section 5.6). */
+export const OutlineSchema = z.object({
+  chapters: z
+    .array(
+      z.object({
+        number: z.number().int().positive(),
+        title: z.string().min(1),
+        line: z.string().min(1),
+      }),
+    )
+    .min(1),
+});
+export type Outline = z.infer<typeof OutlineSchema>;
+
+/** State of an autonomous run (history/runs/<id>.json), enough to resume after a crash. */
+export const RunStateSchema = z.object({
+  id: z.string(),
+  started_at: z.string(),
+  updated_at: z.string(),
+  status: z.enum(['running', 'awaiting_outline_approval', 'paused', 'completed', 'failed']),
+  target_chapters: z.number().int().positive(),
+  next_chapter: z.number().int().positive(),
+  stage: z.enum(['outline', 'plan', 'write', 'chronicle', 'summary', 'report', 'done']),
+  completed: z.array(z.number().int()).default([]),
+  cost_usd: z.number().nonnegative().default(0),
+  outline_approved: z.boolean().default(false),
+  pending_suggestion: z.string().optional(),
+  error: z.string().optional(),
+  log: z.array(z.string()).default([]),
+});
+export type RunState = z.infer<typeof RunStateSchema>;
+
 export const BeatSheetSchema = z.object({
   chapter: z.number().int().positive(),
   title: z.string().min(1),
@@ -547,6 +590,8 @@ export const SCHEMA_REGISTRY = {
   'critic-result': CriticResultSchema,
   'bible-proposals': BibleProposalsSchema,
   'beat-sheet': BeatSheetSchema,
+  'outline': OutlineSchema,
+  'run-state': RunStateSchema,
   'describe-options': DescribeOptionsSchema,
   'directions': DirectionsSchema,
   'lesson-proposal': LessonProposalSchema,

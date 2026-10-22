@@ -88,7 +88,8 @@ function scripted(options: GenerateOptions): string {
 
 async function makeHarness(opts: { budget?: number | null } = {}) {
   const root = path.join(dir, 'story');
-  const store = await createProject(root, { title: 'Черепа и Кости', language: 'ru', idea: 'Девять наёмников и один чемодан.' });
+  // Preset fast: these tests cover the pipeline without the Muse Layer (see muse-run.test.ts).
+  const store = await createProject(root, { title: 'Черепа и Кости', language: 'ru', idea: 'Девять наёмников и один чемодан.', preset: 'fast' });
   if (opts.budget !== undefined) {
     store.config.budget.project_usd = opts.budget;
     await store.saveConfig();

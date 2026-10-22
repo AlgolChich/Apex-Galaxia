@@ -1,9 +1,11 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { ApexError } from '../util/errors.js';
 import { countWords, isoNow, sha256, shortId } from '../util/fs.js';
+import { slugify } from '../util/slug.js';
 import { CachedTokenCounter, HeuristicTokenCounter, type TokenCounter } from '../context/tokens.js';
-import { assemblePrompt, chapterHeading, type AssembleRequest, type AssembledPrompt } from '../context/assembler.js';
+import { assemblePrompt, chapterHeading, loadSummaries, type AssembleRequest, type AssembledPrompt } from '../context/assembler.js';
 import { loadBible, renderEntry, type BibleSnapshot } from '../bible/entries.js';
 import { Chronicle } from '../chronicle/chronicle.js';
 import { renderStateYaml } from '../chronicle/chronicle.js';
@@ -20,9 +22,13 @@ import {
   DescribeOptionsSchema,
   DirectionsSchema,
   LessonProposalSchema,
+  OutlineSchema,
+  RunStateSchema,
   SummaryFrontMatterSchema,
   schemaByName,
   type BeatSheet,
+  type Outline,
+  type RunState,
   type BibleProposals,
   type ChronicleProposal,
   type CriticResult,
@@ -39,6 +45,7 @@ import { estimateCost, type GenerateOptions, type ModelAdapter } from '../adapte
 import { formatLintReport, lintText, normalizeRussianDialogue, type LintReport } from '../lint/index.js';
 import { enforceJsonContract, enforceProseContract } from './contracts.js';
 import { diffParagraphs, type DiffBlock } from './diff.js';
+import { describeStages, formatFindings, museSettings, worstScore, type MuseSettings, type MuseStage } from './muse.js';
 
 export interface HarnessOptions {
   adapter: ModelAdapter;
@@ -74,6 +81,8 @@ export interface WriteParams {
   beatSheet?: BeatSheet;
   pins?: string[];
   onDelta?: (text: string) => void;
+  /** Override the preset's Muse Layer settings for this call. */
+  muse?: Partial<MuseSettings>;
 }
 
 export interface WriteOutcome {
@@ -82,8 +91,11 @@ export interface WriteOutcome {
   text: string;
   lint: LintReport;
   run: TaskRun;
+  /** Total cost of the draft plus the Muse Layer stages. */
   costUsd: number;
   model: string;
+  stages: MuseStage[];
+  critic?: CriticResult;
 }
 
 export interface Estimate {
@@ -424,8 +436,47 @@ export class Harness {
       ...(prepared.expectHeading ? { expectHeading: prepared.expectHeading } : {}),
       maxTokens: mode === 'chapter' ? 8_000 : 4_000,
     });
-    const { suggestion, lint, text } = await this.finishWrite(prepared, run.text, { model: run.result.model, callId: run.result.callId, costUsd: run.result.costUsd, warnings: run.warnings });
-    return { mode, suggestion, text, lint, run, costUsd: run.result.costUsd, model: run.result.model };
+    const muse = await this.museLoop(run, prepared.request.chapter, params.muse);
+    const { suggestion, lint, text } = await this.finishWrite(prepared, muse.text, {
+      model: run.result.model,
+      callId: run.result.callId,
+      costUsd: muse.costUsd,
+      warnings: [...run.warnings, ...(muse.stages.length > 1 ? [`muse: ${describeStages(muse.stages)}`] : [])],
+    });
+    return { mode, suggestion, text, lint, run, costUsd: muse.costUsd, model: run.result.model, stages: muse.stages, ...(muse.critic ? { critic: muse.critic } : {}) };
+  }
+
+  /**
+   * The Muse Layer (Section 4.6): a critic pass by the critic model, then a bounded revision
+   * loop that touches only what the critic quoted. Presets fast / balanced / best switch the
+   * stages; `project.yaml` `muse:` overrides them. Every stage is visible in the outcome.
+   */
+  private async museLoop(run: TaskRun, chapter: ChapterFile | undefined, override?: Partial<MuseSettings>): Promise<{ text: string; costUsd: number; stages: MuseStage[]; critic?: CriticResult }> {
+    const settings = { ...museSettings(this.store.config), ...(override ?? {}) };
+    const stages: MuseStage[] = [{ stage: 'draft', model: run.result.model, costUsd: run.result.costUsd }];
+    let text = run.text;
+    let costUsd = run.result.costUsd;
+    let last: CriticResult | undefined;
+    if (!settings.critic || run.violations.length > 0 || text.trim().length === 0) {
+      return { text, costUsd, stages };
+    }
+    for (let pass = 0; pass <= settings.maxRevisions; pass += 1) {
+      const { result: critic, run: criticRun } = await this.critique(text, chapter);
+      last = critic;
+      costUsd += criticRun.result.costUsd;
+      stages.push({ stage: 'critic', model: criticRun.result.model, costUsd: criticRun.result.costUsd, verdict: critic.verdict, scores: critic.scores, quotes: critic.quotes.length });
+      const done = critic.verdict === 'pass' || worstScore(critic) >= settings.minScore || critic.quotes.length === 0 || pass === settings.maxRevisions;
+      if (done) break;
+      const revised = await this.runTask({ task: 'revise', ...(chapter ? { chapter } : {}), selection: text, vars: { passage: text, findings: formatFindings(critic) } }, { maxTokens: 8_000 });
+      costUsd += revised.result.costUsd;
+      if (revised.violations.length > 0 || revised.text.trim().length === 0) {
+        stages.push({ stage: 'revise', model: revised.result.model, costUsd: revised.result.costUsd, note: `kept the previous version: ${revised.violations.join('; ') || 'empty'}` });
+        break;
+      }
+      text = revised.text;
+      stages.push({ stage: 'revise', model: revised.result.model, costUsd: revised.result.costUsd });
+    }
+    return { text, costUsd, stages, ...(last ? { critic: last } : {}) };
   }
 
   // -------------------------------------------------------------------------
@@ -615,7 +666,7 @@ export class Harness {
    * Accept a suggestion: insert it into its chapter at the anchor, or create the chapter for
    * chapter-mode suggestions. This is the only path by which generated prose reaches a chapter.
    */
-  async accept(suggestionId: string): Promise<ChapterFile> {
+  async accept(suggestionId: string, options: { editedText?: string } = {}): Promise<ChapterFile> {
     const suggestion = await this.store.readSuggestion(suggestionId);
     if (suggestion.front.status !== 'pending') {
       throw new ApexError('INVALID_ARGUMENT', `Suggestion ${suggestionId} is already ${suggestion.front.status}`);
@@ -623,7 +674,8 @@ export class Harness {
     const chapters = await this.store.listChapters();
     const number = suggestion.front.chapter;
     let chapter = number !== undefined ? chapters.find((c) => c.front.number === number) : undefined;
-    let body = suggestion.body.trim();
+    // The Author may accept their own edited version; the diff against the suggestion feeds lesson capture.
+    let body = (options.editedText ?? suggestion.body).trim();
     if (suggestion.front.task === 'write.chapter') {
       const heading = chapterHeading(this.language, number ?? 0, suggestion.front.title ?? '');
       if (body.toLowerCase().startsWith(heading.toLowerCase())) {
@@ -797,4 +849,209 @@ export class Harness {
     const run = await this.runTask({ task: 'voice.card', vars: { sample } }, { maxTokens: 2_000 });
     return { card: run.text, run };
   }
+
+  /** One line per chapter for the Author to approve (long and very long stories, Section 5.6). */
+  async planOutline(chapterCount: number, hint = ''): Promise<{ outline: Outline; run: TaskRun<Outline> }> {
+    const brief = (await this.store.readText(this.store.layout.plan.brief)) ?? '';
+    const run = await this.runTask<Outline>({
+      task: 'plan.outline',
+      plannerView: true,
+      vars: { chapter_count: String(chapterCount), outline_hint: [brief.trim() ? `<brief>\n${brief.trim()}\n</brief>` : '', hint].filter((s) => s.length > 0).join('\n\n') },
+    });
+    if (!run.json) throw new ApexError('CONTRACT_VIOLATION', `No valid outline: ${run.violations.join('; ')}`);
+    const outline = OutlineSchema.parse(run.json);
+    const ru = this.language === 'ru';
+    const lines = [`# ${ru ? 'План' : 'Outline'}`, '', ...outline.chapters.map((c) => `- ${chapterHeading(this.language, c.number, c.title)}: ${c.line}`), ''];
+    await this.store.writeText(this.store.layout.plan.outline, lines.join('\n'));
+    const plan = (await this.store.readYaml(this.store.layout.plan.chapters, ChaptersPlanSchema)) ?? { chapters: [] };
+    const merged = outline.chapters.map((c) => {
+      const existing = plan.chapters.find((p) => p.number === c.number);
+      return { ...(existing ?? { number: c.number, status: 'planned' as const, beats: [] }), number: c.number, title: c.title, turning_point: c.line, target_words: existing?.target_words ?? this.defaultChapterWords() };
+    });
+    await this.store.writeYaml(this.store.layout.plan.chapters, ChaptersPlanSchema, { chapters: merged });
+    return { outline, run };
+  }
+
+  /** Compile the manuscript to one Markdown file under exports/. */
+  async exportMarkdown(outFile?: string): Promise<{ file: string; chapters: number; words: number }> {
+    const chapters = await this.store.listChapters();
+    const parts = [`# ${this.store.config.title}`, ''];
+    let words = 0;
+    for (const ch of chapters) {
+      parts.push(`## ${chapterHeading(this.language, ch.front.number, ch.front.title)}`, '', ch.body.trim(), '');
+      words += countWords(ch.body);
+    }
+    const file = outFile ?? path.join(this.store.layout.exports, `${slugify(this.store.config.title)}.md`);
+    await this.store.writeText(file, parts.join('\n') + '\n');
+    return { file, chapters: chapters.length, words };
+  }
+
+  async readerReport(): Promise<{ report: string; file: string; run: TaskRun }> {
+    const chapters = await this.store.listChapters();
+    const text = chapters.map((c) => `${chapterHeading(this.language, c.front.number, c.front.title)}\n\n${c.body.trim()}`).join('\n\n');
+    const run = await this.runTask({ task: 'report.reader', vars: { text } }, { maxTokens: 4_000 });
+    const file = path.join(this.store.layout.exports, `${slugify(this.store.config.title)}-report.md`);
+    await this.store.writeText(file, run.text + '\n');
+    return { report: run.text, file, run };
+  }
+
+  // -------------------------------------------------------------------------
+  // Autonomous mode (Section 5.9)
+  // -------------------------------------------------------------------------
+
+  private runFile(id: string): string {
+    return path.join(this.store.layout.history.dir, 'runs', `${id}.json`);
+  }
+
+  async readRun(id: string): Promise<RunState> {
+    const text = await this.store.readText(this.runFile(id));
+    if (!text) throw new ApexError('INVALID_ARGUMENT', `Run ${id} not found`, { id });
+    return RunStateSchema.parse(JSON.parse(text));
+  }
+
+  async listRuns(): Promise<RunState[]> {
+    const dir = path.join(this.store.layout.history.dir, 'runs');
+    const names = await fs.readdir(dir).catch(() => [] as string[]);
+    const runs: RunState[] = [];
+    for (const name of names.filter((n) => n.endsWith('.json')).sort()) {
+      const text = await this.store.readText(path.join(dir, name));
+      if (!text) continue;
+      const parsed = RunStateSchema.safeParse(JSON.parse(text));
+      if (parsed.success) runs.push(parsed.data);
+    }
+    return runs;
+  }
+
+  private async saveRun(state: RunState, message?: string): Promise<RunState> {
+    const next: RunState = { ...state, updated_at: isoNow(), log: message ? [...state.log, `${isoNow()} ${message}`].slice(-200) : state.log };
+    await this.store.writeText(this.runFile(next.id), JSON.stringify(next, null, 2) + '\n');
+    return next;
+  }
+
+  /**
+   * «Write the whole story»: plan and write chapter by chapter with the Muse Layer on, apply
+   * chronicle updates with the diff log, cache summaries, and finish with the Markdown book
+   * and a reader's report. Long and very long stories stop for outline approval before chapter
+   * one. The run state is saved after every stage so a killed run resumes where it stopped.
+   */
+  async runBook(options: RunBookOptions = {}): Promise<RunState> {
+    const progress = options.onProgress ?? (() => undefined);
+    let state: RunState;
+    if (options.resume) {
+      state = await this.readRun(options.resume);
+      if (state.status === 'completed') return state;
+      state = await this.saveRun({ ...state, status: 'running', error: undefined as unknown as string }, `resumed at chapter ${state.next_chapter}, stage ${state.stage}`);
+      delete (state as { error?: string }).error;
+    } else {
+      const def = lengthDef(this.narrator, this.store.config.length);
+      const chapters = await this.store.listChapters();
+      const target = options.chapters ?? Math.max(1, def.chapters[1]);
+      state = await this.saveRun(
+        {
+          id: shortId('run'),
+          started_at: isoNow(),
+          updated_at: isoNow(),
+          status: 'running',
+          target_chapters: target,
+          next_chapter: (chapters[chapters.length - 1]?.front.number ?? 0) + 1,
+          stage: def.plan_approval ? 'outline' : 'plan',
+          completed: [],
+          cost_usd: 0,
+          outline_approved: !def.plan_approval,
+          log: [],
+        },
+        `run started: ${target} chapter(s), preset ${this.store.config.preset}`,
+      );
+    }
+    if (options.approveOutline) {
+      state = await this.saveRun({ ...state, outline_approved: true, stage: state.stage === 'outline' ? 'plan' : state.stage }, 'outline approved by the Author');
+    }
+    progress(state, `run ${state.id}: chapter ${state.next_chapter}, stage ${state.stage}`);
+
+    try {
+      if (state.stage === 'outline' && !state.outline_approved) {
+        const { outline, run } = await this.planOutline(state.target_chapters);
+        state = await this.saveRun({ ...state, status: 'awaiting_outline_approval', cost_usd: state.cost_usd + run.result.costUsd }, `outline of ${outline.chapters.length} chapters written to plan/outline.md; waiting for approval`);
+        progress(state, 'outline written; approve it to continue (apex run --resume <id> --approve-outline)');
+        return state;
+      }
+      if (state.stage === 'outline') state = { ...state, stage: 'plan' };
+
+      while (state.completed.length < state.target_chapters) {
+        const n = state.next_chapter;
+        if (state.stage === 'plan') {
+          const existing = await this.readBeatSheet(n);
+          if (!existing) {
+            const { sheet, roll, run } = await this.planChapter(n);
+            state = await this.saveRun({ ...state, cost_usd: state.cost_usd + run.result.costUsd }, `chapter ${n} planned: ${sheet.title}${roll ? ` (d20 ${roll.result})` : ''}`);
+          }
+          state = await this.saveRun({ ...state, stage: 'write' });
+          progress(state, `chapter ${n}: planned`);
+        }
+        if (state.stage === 'write') {
+          let suggestionId = state.pending_suggestion;
+          if (!suggestionId) {
+            const outcome = await this.write('chapter', { chapterNumber: n, ...(options.onDelta ? { onDelta: options.onDelta } : {}) });
+            suggestionId = outcome.suggestion.front.id;
+            state = await this.saveRun({ ...state, pending_suggestion: suggestionId, cost_usd: state.cost_usd + outcome.costUsd }, `chapter ${n} drafted (${describeStages(outcome.stages)}; lint ${outcome.lint.counts.error} error, ${outcome.lint.counts.warning} warning)`);
+          }
+          const pending = await this.store.readSuggestion(suggestionId);
+          if (pending.front.status === 'pending') await this.accept(suggestionId);
+          const { pending_suggestion: _p, ...rest } = state;
+          state = await this.saveRun({ ...rest, stage: 'chronicle' }, `chapter ${n} accepted`);
+          progress(state, `chapter ${n}: written and accepted`);
+        }
+        if (state.stage === 'chronicle') {
+          const chapter = await this.store.getChapter(n);
+          const current = await this.chronicle.readState();
+          if (current.last_chapter < n) {
+            const { proposal, run } = await this.proposeChronicle(chapter);
+            await this.chronicle.applyProposal(proposal, 'auto');
+            state = await this.saveRun({ ...state, cost_usd: state.cost_usd + run.result.costUsd }, `chapter ${n} chronicle applied (${proposal.ops.length} ops)`);
+          }
+          state = await this.saveRun({ ...state, stage: 'summary' });
+          progress(state, `chapter ${n}: chronicle updated`);
+        }
+        if (state.stage === 'summary') {
+          const chapter = await this.store.getChapter(n);
+          const summaries = await loadSummaries(this.store, [chapter]);
+          if (!summaries.get(n)?.fresh) {
+            const { run } = await this.summarizeChapter(chapter);
+            state = await this.saveRun({ ...state, cost_usd: state.cost_usd + run.result.costUsd }, `chapter ${n} summarized`);
+          }
+          state = await this.saveRun({ ...state, completed: [...state.completed, n], next_chapter: n + 1, stage: 'plan' }, `chapter ${n} done`);
+          progress(state, `chapter ${n}: done (${state.completed.length}/${state.target_chapters}, $${state.cost_usd.toFixed(3)})`);
+        }
+      }
+      state = await this.saveRun({ ...state, stage: 'report' });
+      const book = await this.exportMarkdown();
+      let note = `book exported to ${book.file} (${book.words} words)`;
+      if (options.readerReport !== false) {
+        const { file, run } = await this.readerReport();
+        state = { ...state, cost_usd: state.cost_usd + run.result.costUsd };
+        note += `; reader's report at ${file}`;
+      }
+      state = await this.saveRun({ ...state, status: 'completed', stage: 'done' }, note);
+      progress(state, note);
+      return state;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const status = error instanceof ApexError && error.code === 'BUDGET_EXCEEDED' ? 'paused' : 'failed';
+      state = await this.saveRun({ ...state, status, error: message }, `${status}: ${message}`);
+      progress(state, `${status}: ${message}`);
+      return state;
+    }
+  }
+}
+
+export interface RunBookOptions {
+  /** Number of chapters to write (default: the length class's upper bound). */
+  chapters?: number;
+  /** Resume a saved run by id. */
+  resume?: string;
+  /** Pass the outline gate for long and very long stories. */
+  approveOutline?: boolean;
+  readerReport?: boolean;
+  onProgress?: (state: RunState, message: string) => void;
+  onDelta?: (text: string) => void;
 }

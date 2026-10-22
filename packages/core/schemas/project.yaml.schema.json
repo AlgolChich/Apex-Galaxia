@@ -130,6 +130,24 @@
         "best"
       ]
     },
+    "muse": {
+      "type": "object",
+      "properties": {
+        "critic": {
+          "type": "boolean"
+        },
+        "max_revisions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "min_score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
     "models": {
       "default": {},
       "type": "object",

@@ -1,0 +1,38 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/outline.schema.json",
+  "title": "outline",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "chapters": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "line"
+        ]
+      }
+    }
+  },
+  "required": [
+    "chapters"
+  ]
+}

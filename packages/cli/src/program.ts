@@ -3,6 +3,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import {
   ALL_RULES,
+  appendLesson,
   applyDiff,
   chapterHeading,
   countWords,
@@ -14,6 +15,7 @@ import {
   lintText,
   loadBible,
   loadStyleMemory,
+  nextLessonId,
   parsePhraseList,
   parseFrontMatter,
   renderBeatSheet,
@@ -24,6 +26,7 @@ import {
   type CreateProjectOptions,
   type EntryKind,
   type Language,
+  type LessonCategory,
   type WriteMode,
 } from '@apex-galaxia/core';
 import { cliContext, openHarness, out, printError, type GlobalOptions } from './context.js';
@@ -221,14 +224,125 @@ export function buildProgram(): Command {
 
   program
     .command('accept <id> [dir]')
-    .description('accept a suggestion into its chapter')
-    .action(async (id: string, dir: string | undefined, _o: unknown, cmd: Command) => {
+    .description('accept a suggestion into its chapter; --edited <file> accepts your edited version and --lesson proposes a lesson from the diff')
+    .option('--edited <file>', 'the suggestion as you edited it')
+    .option('--lesson', 'propose a lesson from the difference between the suggestion and your edit (model)')
+    .action(async (id: string, dir: string | undefined, opts: { edited?: string; lesson?: boolean }, cmd: Command) => {
       try {
         const g = globals(cmd);
         const ctx = await cliContext(g, dir);
         const { harness } = await openHarness(ctx, g);
-        const chapter = await harness.accept(id);
-        out(ctx, { chapter: chapter.front, path: chapter.path }, () => `${ctx.t('accepted')} ${chapter.path}`);
+        const suggestion = await harness.store.readSuggestion(id);
+        const edited = opts.edited ? await fs.readFile(path.resolve(opts.edited), 'utf8') : undefined;
+        const chapter = await harness.accept(id, edited !== undefined ? { editedText: edited } : {});
+        let lesson: unknown;
+        if (opts.lesson && edited !== undefined && edited.trim() !== suggestion.body.trim()) {
+          lesson = (await harness.lessonFromEdit(suggestion.body, edited, '')).proposal;
+        }
+        out(ctx, { chapter: chapter.front, path: chapter.path, lesson }, () => [`${ctx.t('accepted')} ${chapter.path}`, lesson ? `lesson proposal: ${JSON.stringify(lesson)}\n(add it with: apex lesson add …)` : ''].filter((l) => l.length > 0).join('\n'));
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
+  const lesson = program.command('lesson').description('lessons from the Author\'s edits (Section 6.2)');
+  lesson
+    .command('propose [dir]')
+    .description('turn an edit (before/after text or files) and a note into a one-line rule proposal (model)')
+    .requiredOption('--before <text|file>')
+    .requiredOption('--after <text|file>')
+    .option('--note <text>')
+    .action(async (dir: string | undefined, opts: { before: string; after: string; note?: string }, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const ctx = await cliContext(g, dir);
+        const { harness } = await openHarness(ctx, g);
+        const read = async (v: string) => (await fs.stat(path.resolve(v)).then(() => true).catch(() => false)) ? fs.readFile(path.resolve(v), 'utf8') : v;
+        const { proposal } = await harness.lessonFromEdit(await read(opts.before), await read(opts.after), opts.note ?? '');
+        out(ctx, proposal, () => `[${proposal.category}] ${proposal.rule}${proposal.before ? `\n  before: ${proposal.before}` : ''}${proposal.after ? `\n  after: ${proposal.after}` : ''}\nadd it with: apex lesson add --category ${proposal.category} --rule "…" --provenance "…"`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  lesson
+    .command('add [dir]')
+    .description('append a confirmed lesson to the project\'s style/lessons.md')
+    .requiredOption('--category <id>')
+    .requiredOption('--rule <text>')
+    .requiredOption('--provenance <text>')
+    .option('--before <text>')
+    .option('--after <text>')
+    .option('--language <id>', 'ru | en | both', 'both')
+    .option('--weight <n>', '1')
+    .action(async (dir: string | undefined, opts: Record<string, string | undefined>, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const ctx = await cliContext(g, dir);
+        const store = await ProjectStore.open(ctx.root);
+        const style = await loadStyleMemory(store, ctx.resources);
+        const entry = {
+          id: nextLessonId(style.lessons),
+          date: new Date().toISOString().slice(0, 10),
+          category: opts['category'] as LessonCategory,
+          rule: opts['rule']!,
+          provenance: opts['provenance']!,
+          weight: Number(opts['weight'] ?? '1'),
+          language: (opts['language'] ?? 'both') as 'ru' | 'en' | 'both',
+          ...(opts['before'] ? { before: opts['before'] } : {}),
+          ...(opts['after'] ? { after: opts['after'] } : {}),
+        };
+        await appendLesson(store.layout.style.lessons, entry);
+        out(ctx, entry, () => `${entry.id} → ${store.layout.style.lessons}`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('run [dir]')
+    .description('autonomous mode: plan and write chapter by chapter with the Muse Layer, apply the chronicle, cache summaries, export the book and a reader\'s report; resumable')
+    .option('--chapters <n>', 'how many chapters to write (default: the length class)')
+    .option('--resume <id>', 'resume a saved run')
+    .option('--approve-outline', 'approve the outline of a long story and continue')
+    .option('--no-report', 'skip the reader\'s report at the end')
+    .option('--quiet', 'do not stream the text')
+    .action(async (dir: string | undefined, opts: { chapters?: string; resume?: string; approveOutline?: boolean; report?: boolean; quiet?: boolean }, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const ctx = await cliContext(g, dir);
+        const { harness } = await openHarness(ctx, g);
+        const stream = !opts.quiet && !ctx.json;
+        const state = await harness.runBook({
+          ...(opts.chapters ? { chapters: Number(opts.chapters) } : {}),
+          ...(opts.resume ? { resume: opts.resume } : {}),
+          ...(opts.approveOutline ? { approveOutline: true } : {}),
+          readerReport: opts.report !== false,
+          onProgress: (_s, message) => {
+            if (!ctx.json) console.log(`\n[run] ${message}`);
+          },
+          ...(stream ? { onDelta: (d: string) => process.stdout.write(d) } : {}),
+        });
+        out(ctx, state, () => `run ${state.id}: ${state.status} · chapters ${state.completed.length}/${state.target_chapters} · $${state.cost_usd.toFixed(3)}${state.error ? `\n${state.error}` : ''}${state.status === 'awaiting_outline_approval' ? `\nReview plan/outline.md, then: apex run --resume ${state.id} --approve-outline` : ''}`);
+        if (state.status === 'failed' || state.status === 'paused') process.exitCode = 1;
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('runs [dir]')
+    .description('list autonomous runs and their state')
+    .action(async (dir: string | undefined, _o: unknown, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const ctx = await cliContext(g, dir);
+        const { harness } = await openHarness(ctx, g);
+        const runs = await harness.listRuns();
+        out(ctx, runs, () => (runs.length === 0 ? '—' : runs.map((r) => `${r.id}  ${r.status.padEnd(26)} ${r.completed.length}/${r.target_chapters}  $${r.cost_usd.toFixed(3)}  ${r.updated_at}`).join('\n')));
       } catch (error) {
         printError(error);
         process.exitCode = 1;

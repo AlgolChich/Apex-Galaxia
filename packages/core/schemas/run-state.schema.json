@@ -1,0 +1,89 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/run-state.schema.json",
+  "title": "run-state",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "awaiting_outline_approval",
+        "paused",
+        "completed",
+        "failed"
+      ]
+    },
+    "target_chapters": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "next_chapter": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "outline",
+        "plan",
+        "write",
+        "chronicle",
+        "summary",
+        "report",
+        "done"
+      ]
+    },
+    "completed": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      }
+    },
+    "cost_usd": {
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "outline_approved": {
+      "default": false,
+      "type": "boolean"
+    },
+    "pending_suggestion": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "log": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "id",
+    "started_at",
+    "updated_at",
+    "status",
+    "target_chapters",
+    "next_chapter",
+    "stage"
+  ]
+}

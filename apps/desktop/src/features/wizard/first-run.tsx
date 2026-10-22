@@ -35,7 +35,10 @@ export function KeyStep() {
   );
 }
 
-export function ProjectStep({ choice, onChoice, path, onPath, error }: { choice: 'create' | 'import'; onChoice: (choice: 'create' | 'import') => void; path: string; onPath: (path: string) => void; error: string | undefined }) {
+/** How the first run gets a project: a brief, an existing folder, or a manuscript imported into a new folder. */
+export type ProjectChoice = 'create' | 'import' | 'manuscript';
+
+export function ProjectStep({ choice, onChoice, path, onPath, error, imported }: { choice: ProjectChoice; onChoice: (choice: ProjectChoice) => void; path: string; onPath: (path: string) => void; error: string | undefined; imported?: boolean }) {
   const t = useT();
   const shell = getClient().transport.shell;
   const pick = async () => {
@@ -44,18 +47,20 @@ export function ProjectStep({ choice, onChoice, path, onPath, error }: { choice:
   };
   return (
     <div className="wizard__step">
-      <RadioCards<'create' | 'import'>
+      <RadioCards<ProjectChoice>
         name="wizard-project-choice"
         legend={t('wizard.project.choice')}
         value={choice}
         onChange={onChoice}
         defaultLabel=""
-        columns={2}
+        columns={3}
         options={[
           { value: 'create', name: t('wizard.project.create'), lines: [t('wizard.project.createHint')] },
           { value: 'import', name: t('wizard.project.import'), lines: [t('wizard.project.importHint')] },
+          { value: 'manuscript', name: t('wizard.project.manuscript'), lines: [t('wizard.project.manuscriptHint')] },
         ]}
       />
+      {choice === 'manuscript' ? <div className="wizard__note">{imported ? t('wizard.project.manuscriptDone') : t('wizard.project.manuscriptNote')}</div> : null}
       {choice === 'import' ? (
         <Field id="wizard-import-path" label={t('wizard.project.path')} hint={t('wizard.project.pathHint')} error={error} required>
           <div className="field__path">

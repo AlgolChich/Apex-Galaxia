@@ -52,6 +52,11 @@ export const strings = {
     'wizard.project.pathRequired': 'Укажите папку проекта',
     'wizard.project.open': 'Открыть',
     'wizard.project.opened': 'Открыт проект «{title}»',
+    'wizard.project.manuscript': 'Импортировать готовую историю (Markdown)',
+    'wizard.project.manuscriptHint': 'Файл Markdown или текст разбивается на главы по заголовкам; вокруг него создаётся новый проект.',
+    'wizard.project.manuscriptNote': 'По кнопке «Выбрать рукопись…» откроется окно импорта: файл, папка нового проекта, язык, предпросмотр глав, импорт.',
+    'wizard.project.manuscriptDone': 'Рукопись импортирована; дальше — образец голоса.',
+    'wizard.project.manuscriptNext': 'Выбрать рукопись…',
 
     'wizard.voice.title': 'Образец голоса',
     'wizard.voice.hint': 'Необязательно. Вставьте страницу собственной прозы: модель составит карточку голоса, которая сопровождает каждый запрос на текст.',
@@ -219,6 +224,11 @@ export const strings = {
     'wizard.project.pathRequired': 'Choose the project folder',
     'wizard.project.open': 'Open',
     'wizard.project.opened': 'Opened “{title}”',
+    'wizard.project.manuscript': 'Import an existing Markdown story',
+    'wizard.project.manuscriptHint': 'A Markdown or text file is split into chapters by its headings; a new project is created around it.',
+    'wizard.project.manuscriptNote': '“Choose the manuscript…” opens the import dialog: the file, the folder of the new project, the language, a preview of the chapters, import.',
+    'wizard.project.manuscriptDone': 'The manuscript is imported; the voice sample comes next.',
+    'wizard.project.manuscriptNext': 'Choose the manuscript…',
 
     'wizard.voice.title': 'Voice sample',
     'wizard.voice.hint': 'Optional. Paste a page of your own prose: the model distils a voice card that rides every prose prompt.',

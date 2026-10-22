@@ -62,6 +62,9 @@ export function Welcome() {
             <button type="button" className="btn btn--primary" onClick={() => setWizard('new-story')}>
               {t('app.newProject')}
             </button>
+            <button type="button" className="btn" onClick={() => window.dispatchEvent(new CustomEvent('apex:import', { detail: { kind: 'manuscript' } }))}>
+              {t('welcome.import')}
+            </button>
           </div>
         </form>
         {recent.length > 0 ? (

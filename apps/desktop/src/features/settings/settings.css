@@ -29,6 +29,39 @@
   align-items: start;
 }
 
+/* ---- evals: two run buttons with their explanations, the Markdown report in a monospace block */
+.evals__actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.6rem 1rem;
+  align-items: center;
+}
+
+.evals__actions .btn {
+  justify-self: start;
+}
+
+.evals__report {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.evals__pre {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  max-height: 28rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
 .settings__bar {
   display: flex;
   align-items: center;

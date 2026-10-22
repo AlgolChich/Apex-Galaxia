@@ -7,6 +7,7 @@ import { Field, SelectField, hintId } from '../wizard/field.js';
 import { messageOf, useNarratorOptions } from '../wizard/narrator-options.js';
 import { KeyManager, ModelStatusLine } from '../wizard/status.js';
 import { ViewFrame } from '../views/frame.js';
+import { EvalsSection } from './evals.js';
 import { ROLES, draftOf, patchOf, type SettingsDraft } from './patch.js';
 import './settings.css';
 
@@ -361,6 +362,8 @@ export function SettingsView() {
             <ModelStatusLine status={model} />
           </div>
         </section>
+
+        <EvalsSection />
       </div>
     </ViewFrame>
   );

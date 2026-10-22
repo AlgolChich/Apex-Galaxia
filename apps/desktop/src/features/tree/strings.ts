@@ -27,6 +27,7 @@ const en = {
   'welcome.pathPlaceholder': 'Path to a story folder',
   'welcome.recentOpen': 'Open {name}',
   'welcome.connection': 'Connection',
+  'welcome.import': 'Import a manuscript',
 };
 
 const ru: Record<keyof typeof en, string> = {
@@ -57,6 +58,7 @@ const ru: Record<keyof typeof en, string> = {
   'welcome.pathPlaceholder': 'Путь к папке истории',
   'welcome.recentOpen': 'Открыть {name}',
   'welcome.connection': 'Подключение',
+  'welcome.import': 'Импортировать рукопись',
 };
 
 export const strings = { ru, en };

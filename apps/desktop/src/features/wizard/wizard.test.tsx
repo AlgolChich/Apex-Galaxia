@@ -1,6 +1,8 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useStore } from '../../state/store.js';
+import { ImportDialog } from '../import/index.js';
+import { useImportStore } from '../import/store.js';
 import { buildCreateOptions, emptyStoryForm, homeOfConfigFile, slugOfTitle } from './build.js';
 import { Wizard } from './index.js';
 import { callsOf, mockClient, resetStore, sampleConfig } from './test-utils.js';
@@ -144,6 +146,49 @@ describe('Wizard (first run)', () => {
     expect(useStore.getState().ui.wizard).toBe('first-run');
     expect(screen.getByRole('heading', { name: 'Voice sample' })).toBeTruthy();
     expect(screen.getByText('Opened “Imported”')).toBeTruthy();
+    await click('Done');
+    expect(useStore.getState().ui.wizard).toBe('none');
+  });
+
+  it('imports a manuscript into a new project through the import dialog and continues to the voice step', async () => {
+    const text = 'Chapter 1: The ferry\n\nThe ferry was late.\n';
+    const transport = mockClient({
+      project_import: (args) => (args['preview'] ? { root: args['path'], language: 'en', chapters: [{ number: 1, title: 'The ferry', words: 4 }] } : { root: args['path'], created: true, chapters: [{ number: 1, title: 'The ferry', stem: '01-the-ferry', words: 4 }] }),
+      project_open: (args) => ({ root: args['path'], config: sampleConfig({ title: 'Ferry', language: 'en' }), chapters: [{ number: 1, title: 'The ferry', status: 'draft' }], spentUsd: 0 }),
+      chapter_get: () => ({ front: { number: 1, title: 'The ferry', status: 'draft' }, stem: '01-the-ferry', path: '/tmp/ferry/chapters/01-the-ferry.md', body: 'The ferry was late.' }),
+      lint: () => ({ hits: [], counts: { info: 0, warning: 0, error: 0 }, words: 4, paragraphs: 1 }),
+    });
+    useImportStore.setState({ request: undefined, busy: false });
+    useStore.setState((s) => ({ ui: { ...s.ui, wizard: 'first-run' } }));
+    render(
+      <>
+        <Wizard mode="first-run" />
+        <ImportDialog />
+      </>,
+    );
+    await next();
+    await click('Skip for now');
+    expect(screen.getByRole('heading', { name: 'Project' })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/Import an existing Markdown story/));
+    expect(screen.getByText('Step 3 of 4')).toBeTruthy();
+    await click('Choose the manuscript…');
+
+    // The dialog opens in manuscript mode with the new-project target; the wizard waits.
+    const dialog = screen.getByRole('dialog', { name: 'Import a manuscript' });
+    expect(dialog).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Project' })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/^Text/), { target: { value: text } });
+    fireEvent.change(screen.getByLabelText(/^Folder/), { target: { value: '/tmp/ferry' } });
+    await click('Preview');
+    await screen.findByText('Chapters found: 1');
+    await click('Import 1 chapter');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    expect(callsOf(transport, 'project_import')[1]).toEqual({ path: '/tmp/ferry', text, status: 'draft' });
+    expect(useStore.getState().project.root).toBe('/tmp/ferry');
+    expect(useStore.getState().ui.wizard).toBe('first-run');
+    expect(await screen.findByRole('heading', { name: 'Voice sample' })).toBeTruthy();
+    expect(screen.getByText('Opened “Ferry”')).toBeTruthy();
     await click('Done');
     expect(useStore.getState().ui.wizard).toBe('none');
   });

@@ -3,6 +3,7 @@ import { getClient } from '../../api/index.js';
 import type { BibleEntryFull, BibleEntrySummary, EntryKind } from '../../api/types.js';
 import { useT } from '../../i18n/index.js';
 import { useStore } from '../../state/store.js';
+import { openImport, useImportStore } from '../import/store.js';
 import { Field, hintId } from '../wizard/field.js';
 import { ViewFrame, messageOf, splitList } from './frame.js';
 
@@ -59,6 +60,9 @@ export function BibleView() {
   const chapters = useStore((s) => s.project.chapters);
   const config = useStore((s) => s.project.config);
   const model = useStore((s) => s.connection.model);
+  // Bumped by the import dialog after a Bible import or a saved dossier; the list reloads.
+  const importVersion = useImportStore((s) => s.bibleVersion);
+  const dossiers = useImportStore((s) => s.dossiers);
   const client = getClient();
 
   const [entries, setEntries] = useState<BibleEntrySummary[]>([]);
@@ -90,7 +94,7 @@ export function BibleView() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, importVersion]);
 
   useEffect(() => {
     if (extractChapter === undefined && chapters.length > 0) setExtractChapter(chapters[chapters.length - 1]?.number);
@@ -199,6 +203,12 @@ export function BibleView() {
     <>
       <button type="button" className="btn" onClick={() => setCreating((c) => !c)} aria-expanded={creating}>
         {t('views.bible.new')}
+      </button>
+      <button type="button" className="btn" onClick={() => openImport({ kind: 'bible' })}>
+        {t('views.bible.import')}
+      </button>
+      <button type="button" className="btn" onClick={() => openImport({ kind: 'dossier' })}>
+        {t('views.bible.dossier')}
       </button>
       <button type="button" className="btn btn--ghost" onClick={() => void load()}>
         {t('views.reload')}
@@ -419,6 +429,21 @@ export function BibleView() {
                       </li>
                     );
                   })}
+                </ul>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="view__section" aria-labelledby="bible-research-title">
+            <h2 id="bible-research-title">{t('views.bible.research')}</h2>
+            <div className="view__hint">{t('views.bible.researchHint')}</div>
+            {dossiers.length > 0 ? (
+              <div className="small">
+                <div className="muted">{t('views.bible.researchSession')}:</div>
+                <ul className="mono" style={{ margin: '0.2rem 0 0', paddingLeft: '1.2rem' }}>
+                  {dossiers.map((file) => (
+                    <li key={file}>{file}</li>
+                  ))}
                 </ul>
               </div>
             ) : null}

@@ -3,7 +3,8 @@ import { getClient } from '../../api/index.js';
 import { useLanguage, useT, type UiLanguage } from '../../i18n/index.js';
 import { useStore } from '../../state/store.js';
 import { buildCreateOptions, emptyStoryForm, homeOfConfigFile, joinPath, slugOfTitle, type StoryForm } from './build.js';
-import { KeyStep, LanguageStep, ProjectStep, VoiceStep } from './first-run.js';
+import { openImport } from '../import/store.js';
+import { KeyStep, LanguageStep, ProjectStep, VoiceStep, type ProjectChoice } from './first-run.js';
 import { messageOf, useNarratorOptions } from './narrator-options.js';
 import { BasicsStep, CharactersStep, HarshnessStep, IdeaStep, LengthStep, NarrationStep, RatingStep, ScenesStep, StorytellerStep, SummaryStep, WorldStep } from './story-steps.js';
 import './wizard.css';
@@ -48,7 +49,7 @@ export function Wizard({ mode }: { mode: 'first-run' | 'new-story' }) {
   const { options, error: optionsError } = useNarratorOptions();
 
   const [form, setForm] = useState<StoryForm>(() => emptyStoryForm(uiLanguage));
-  const [choice, setChoice] = useState<'create' | 'import'>('create');
+  const [choice, setChoice] = useState<ProjectChoice>('create');
   const [importPath, setImportPath] = useState('');
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -153,6 +154,19 @@ export function Wizard({ mode }: { mode: 'first-run' | 'new-story' }) {
         await openProject(importPath.trim());
         setProjectDone(true);
       }
+      if (step === 'project' && choice === 'manuscript' && !projectDone) {
+        // The import dialog takes over: file, folder, language, preview, import. When it is
+        // done the project is open (the store opened it) and the wizard moves on to the voice step.
+        openImport({
+          kind: 'manuscript',
+          target: 'new',
+          onDone: () => {
+            setProjectDone(true);
+            advance();
+          },
+        });
+        return;
+      }
       if (step === 'summary') {
         await createProject(buildCreateOptions(form));
         setProjectDone(true);
@@ -224,7 +238,7 @@ export function Wizard({ mode }: { mode: 'first-run' | 'new-story' }) {
       case 'key':
         return <KeyStep />;
       case 'project':
-        return <ProjectStep choice={choice} onChoice={setChoice} path={importPath} onPath={setImportPath} error={errors.importPath} />;
+        return <ProjectStep choice={choice} onChoice={setChoice} path={importPath} onPath={setImportPath} error={errors.importPath} imported={projectDone} />;
       case 'basics':
         return <BasicsStep {...stepProps} errors={errors} onTitle={onTitle} onPath={onPath} />;
       case 'world':
@@ -254,7 +268,7 @@ export function Wizard({ mode }: { mode: 'first-run' | 'new-story' }) {
     }
   })();
 
-  const nextLabel = step === 'summary' ? (busy ? t('wizard.creating') : t('wizard.create')) : last ? t('common.finish') : t('common.next');
+  const nextLabel = step === 'summary' ? (busy ? t('wizard.creating') : t('wizard.create')) : step === 'project' && choice === 'manuscript' && !projectDone ? t('wizard.project.manuscriptNext') : last ? t('common.finish') : t('common.next');
   const showBack = index > 0 && !(step === 'voice' && projectDone);
 
   return (

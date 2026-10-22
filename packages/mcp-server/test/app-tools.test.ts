@@ -155,6 +155,81 @@ describe('app tools over stdio (scripted model)', () => {
     expect(chapter['body']).toContain('Манжета лежала');
   });
 
+  it('talks with the narrator, drafts ranked candidates and records the Author\'s pairwise choice', async () => {
+    const deltas: string[] = [];
+    const chat = structured(await client.callTool({ name: 'narrator_chat', arguments: { message: 'дальше', ui_language: 'ru' } }, undefined, { onprogress: (p) => p.message && deltas.push(p.message) }));
+    expect(chat['action']).toEqual({ id: 'next', argument: '' });
+    expect(chat['command']).toEqual({ id: 'next', argument: '' });
+    expect(String(chat['reply'])).toContain('Автор');
+    expect(deltas.join('')).toContain('action: next');
+    const idle = structured(await client.callTool({ name: 'narrator_chat', arguments: { message: 'что думаешь?', history: [{ role: 'user', content: 'привет' }] } }));
+    expect(idle['action']).toBeNull();
+
+    const progress: string[] = [];
+    const candidates = structured(await client.callTool({ name: 'write_candidates', arguments: { chapter: 1, count: 2, target_words: 200 } }, undefined, { onprogress: (p) => p.message && progress.push(p.message) }));
+    const list = candidates['candidates'] as Array<{ suggestion: { id: string; status: string }; text: string; score: number | null }>;
+    expect(list).toHaveLength(2);
+    expect(progress).toEqual(['candidate 1/2', 'candidate 2/2']);
+    expect((candidates['ranking'] as string[]).length).toBe(2);
+    expect(list[0]?.text).not.toBe(list[1]?.text);
+    const record = structured(await client.callTool({ name: 'ab_record', arguments: { left: list[0]!.suggestion.id, right: list[1]!.suggestion.id, choice: 'left', critic_preferred: 'left', note: 'tighter' } }))['record'] as { agreed: boolean };
+    expect(record.agreed).toBe(true);
+    const all = structured(await client.callTool({ name: 'ab_list', arguments: {} }));
+    expect(all['count']).toBe(1);
+    expect(all['critic_agreement']).toBe(1);
+    await client.callTool({ name: 'suggestion_discard', arguments: { id: list[0]!.suggestion.id } });
+    await client.callTool({ name: 'suggestion_discard', arguments: { id: list[1]!.suggestion.id } });
+    const evals = structured(await client.callTool({ name: 'eval_run', arguments: { critic: false } }));
+    expect(((evals['results'] as { summary: { ab?: { count: number } } }).summary.ab?.count)).toBe(1);
+  });
+
+  it('imports a manuscript and Bible entries from Markdown', async () => {
+    const preview = structured(await client.callTool({ name: 'project_import', arguments: { path: path.join(dir, 'imported'), text: '# Книга\n\n## Глава 1. Фары\n\nБабка Нюра не уходила.\n\n## Глава 2. Штрек\n\nУтром стоял туман.', preview: true } }));
+    expect((preview['chapters'] as Array<{ title: string }>).map((c) => c.title)).toEqual(['Фары', 'Штрек']);
+    expect(preview['language']).toBe('ru');
+    const imported = structured(await client.callTool({ name: 'project_import', arguments: { path: path.join(dir, 'imported'), text: '## Глава 1. Фары\n\nБабка Нюра не уходила.\n\n## Глава 2. Штрек\n\nУтром стоял туман.', title: 'Штрек-импорт' } }));
+    expect(imported['created']).toBe(true);
+    expect((imported['chapters'] as unknown[]).length).toBe(2);
+    const opened = structured(await client.callTool({ name: 'project_chapters', arguments: {} }));
+    expect((opened['chapters'] as unknown[]).length).toBe(2);
+    const entries = structured(await client.callTool({ name: 'bible_import', arguments: { kind: 'character', text: '# Ольга\n\nФельдшер посёлка.\n\n# Гриша\n\nБывший взрывник.' } }))['entries'] as Array<{ slug: string }>;
+    expect(entries.map((e) => e.slug)).toEqual(['olga', 'grisha']);
+    // back to the main story project for the tests that follow
+    await client.callTool({ name: 'project_open', arguments: { path: path.join(dir, 'story') } });
+  });
+
+  it('stops a run at the ASK gate and continues after the Author approves', async () => {
+    const root = path.join(dir, 'gate');
+    await client.callTool({ name: 'project_create', arguments: { path: root, title: 'Шлюз', language: 'ru', idea: 'Грузовик.', length: 'short' } });
+    await client.callTool({ name: 'project_settings_update', arguments: { settings: { preset: 'fast' } } });
+    await fs.mkdir(path.join(root, 'plan', 'beats'), { recursive: true });
+    await fs.writeFile(path.join(root, 'plan', 'beats', '01.json'), JSON.stringify({ chapter: 1, title: 'Фары', goal: 'Гриша выбирает.', beats: ['Один.', 'Два.', 'Три.'], breather_scene: 'Чай.', ending_image: 'Петля.', world_tick: [], guns: [], irreversible: [{ who: 'Гриша', what: 'гибнет в штреке' }] }));
+    runEvents.length = 0;
+    const started = structured(await client.callTool({ name: 'run_start', arguments: { chapters: 1, reader_report: false } }));
+    const id = started['id'] as string;
+    await waitFor(() => runEvents.some((e) => e['run_id'] === id && e['final'] === true));
+    const waiting = structured(await client.callTool({ name: 'run_get', arguments: { id } }))['state'] as { status: string; pending_decision?: { chapter: number; items: unknown[] } };
+    expect(waiting.status).toBe('awaiting_decision');
+    expect(waiting.pending_decision?.items).toEqual([{ who: 'Гриша', what: 'гибнет в штреке' }]);
+    expect(runEvents.some((e) => e['run_id'] === id && e['pending_decision'] !== undefined)).toBe(true);
+    expect(await fs.readdir(path.join(root, 'chapters')).catch(() => [])).toEqual([]);
+    runEvents.length = 0;
+    await client.callTool({ name: 'run_start', arguments: { resume: id, approve_decision: true, reader_report: false } });
+    await waitFor(() => runEvents.some((e) => e['run_id'] === id && e['final'] === true), 60_000);
+    const done = structured(await client.callTool({ name: 'run_get', arguments: { id } }))['state'] as { status: string; approved_decisions: number[] };
+    expect(done.status).toBe('completed');
+    expect(done.approved_decisions).toEqual([1]);
+    await client.callTool({ name: 'project_open', arguments: { path: path.join(dir, 'story') } });
+  });
+
+  it('runs the planner evals through the server', async () => {
+    const result = structured(await client.callTool({ name: 'eval_run', arguments: { planner: true, critic: true } }));
+    const results = result['results'] as { cases: unknown[]; judged: boolean };
+    expect(results.judged).toBe(true);
+    expect(results.cases.length).toBeGreaterThanOrEqual(10);
+    expect(String(result['report'])).toContain('# Planner eval');
+  }, 120_000);
+
   it('runs the book in the background with progress events, pauses at a stage boundary and resumes', async () => {
     runEvents.length = 0;
     const started = structured(await client.callTool({ name: 'run_start', arguments: { chapters: 3, reader_report: false } }));

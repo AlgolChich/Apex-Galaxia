@@ -522,12 +522,18 @@ export const OutlineSchema = z.object({
 });
 export type Outline = z.infer<typeof OutlineSchema>;
 
+export const IrreversibleChoiceSchema = z.object({
+  who: z.string().min(1),
+  what: z.string().min(1),
+});
+export type IrreversibleChoice = z.infer<typeof IrreversibleChoiceSchema>;
+
 /** State of an autonomous run (history/runs/<id>.json), enough to resume after a crash. */
 export const RunStateSchema = z.object({
   id: z.string(),
   started_at: z.string(),
   updated_at: z.string(),
-  status: z.enum(['running', 'awaiting_outline_approval', 'paused', 'completed', 'failed']),
+  status: z.enum(['running', 'awaiting_outline_approval', 'awaiting_decision', 'paused', 'completed', 'failed']),
   target_chapters: z.number().int().positive(),
   next_chapter: z.number().int().positive(),
   stage: z.enum(['outline', 'plan', 'write', 'chronicle', 'summary', 'report', 'done']),
@@ -535,6 +541,10 @@ export const RunStateSchema = z.object({
   cost_usd: z.number().nonnegative().default(0),
   outline_approved: z.boolean().default(false),
   pending_suggestion: z.string().optional(),
+  /** The ASK gate (Section 5.9): irreversible choices the planner proposed for a chapter, waiting for the Author. */
+  pending_decision: z.object({ chapter: z.number().int().positive(), items: z.array(IrreversibleChoiceSchema) }).optional(),
+  /** Chapters whose irreversible choices the Author approved. */
+  approved_decisions: z.array(z.number().int()).default([]),
   error: z.string().optional(),
   log: z.array(z.string()).default([]),
 });
@@ -550,6 +560,8 @@ export const BeatSheetSchema = z.object({
   world_tick: z.array(z.string()).default([]),
   guns: z.array(z.string()).default([]),
   cliffhanger: z.string().optional(),
+  /** Choices the story cannot take back (a death, a maiming, a betrayal revealed): the Author is asked before the chapter is written. */
+  irreversible: z.array(IrreversibleChoiceSchema).default([]),
 });
 export type BeatSheet = z.infer<typeof BeatSheetSchema>;
 
@@ -580,6 +592,16 @@ export const DirectionsSchema = z.object({
 export type Directions = z.infer<typeof DirectionsSchema>;
 
 /** Output of the /improve task: whole-file replacements proposed, never applied (Section 6.7). */
+/** What the planner-eval judge returns (prompts/eval.planner.md). */
+export const PlannerJudgementSchema = z.object({
+  harshness_fit: z.number().int().min(1).max(5),
+  storyteller_fit: z.number().int().min(1).max(5),
+  roll_obedience: z.number().int().min(1).max(5).nullable().default(null),
+  irreversible_ok: z.boolean().default(true),
+  notes: z.string().optional(),
+});
+export type PlannerJudgement = z.infer<typeof PlannerJudgementSchema>;
+
 export const ImproveProposalsSchema = z.object({
   proposals: z
     .array(
@@ -645,6 +667,7 @@ export const SCHEMA_REGISTRY = {
   'directions': DirectionsSchema,
   'lesson-proposal': LessonProposalSchema,
   'improve-proposals': ImproveProposalsSchema,
+  'planner-judgement': PlannerJudgementSchema,
   'user-config.yaml': UserConfigSchema,
 } as const;
 

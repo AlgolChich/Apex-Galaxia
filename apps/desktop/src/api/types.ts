@@ -229,6 +229,13 @@ export interface BeatSheet {
   world_tick: string[];
   guns: string[];
   cliffhanger?: string;
+  /** Choices the story cannot take back; the run stops for the Author before writing. */
+  irreversible: IrreversibleChoice[];
+}
+
+export interface IrreversibleChoice {
+  who: string;
+  what: string;
 }
 
 export interface Roll {
@@ -262,7 +269,7 @@ export interface RunState {
   id: string;
   started_at: string;
   updated_at: string;
-  status: 'running' | 'awaiting_outline_approval' | 'paused' | 'completed' | 'failed';
+  status: 'running' | 'awaiting_outline_approval' | 'awaiting_decision' | 'paused' | 'completed' | 'failed';
   target_chapters: number;
   next_chapter: number;
   stage: 'outline' | 'plan' | 'write' | 'chronicle' | 'summary' | 'report' | 'done';
@@ -270,6 +277,9 @@ export interface RunState {
   cost_usd: number;
   outline_approved: boolean;
   pending_suggestion?: string;
+  /** The ASK gate: irreversible choices waiting for the Author (status awaiting_decision). */
+  pending_decision?: { chapter: number; items: IrreversibleChoice[] };
+  approved_decisions: number[];
   error?: string;
   log: string[];
 }
@@ -287,6 +297,77 @@ export interface RunEvent {
   delta?: string;
   final?: boolean;
   error?: string;
+  pending_decision?: { chapter: number; items: IrreversibleChoice[] };
+}
+
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface CommandMatch {
+  id: string;
+  argument: string;
+}
+
+export interface ChatResult {
+  reply: string;
+  /** A command the Author asked for, from the model's action line or the deterministic match. */
+  action: CommandMatch | null;
+  command: CommandMatch | null;
+  model: string | null;
+  costUsd: number;
+  warnings?: string[];
+}
+
+export interface CandidateResult {
+  suggestion: SuggestionFront;
+  text: string;
+  lint: LintReport;
+  critic: CriticResult | null;
+  /** Mean of the critic's scores; null without a critic. */
+  score: number | null;
+  model: string;
+  costUsd: number;
+}
+
+export interface CandidatesResult {
+  mode: 'continue' | 'guided' | 'scene' | 'chapter';
+  candidates: CandidateResult[];
+  /** Suggestion ids, best first by the critic. */
+  ranking: string[];
+  costUsd: number;
+}
+
+export interface AbRecord {
+  ts: string;
+  task: string;
+  left: string;
+  right: string;
+  choice: 'left' | 'right' | 'tie';
+  note?: string;
+  critic_preferred: 'left' | 'right' | null;
+  agreed: boolean | null;
+}
+
+export interface ImportPreview {
+  root: string;
+  language: Language;
+  chapters: Array<{ number: number; title: string; words: number }>;
+}
+
+export interface ImportResult {
+  root: string;
+  created: boolean;
+  chapters: Array<{ number: number; title: string; stem: string; words?: number }>;
+}
+
+export interface PlannerEvalResults {
+  ran_at: string;
+  models: Record<string, string>;
+  judged: boolean;
+  cases: Array<{ brief: string; language: Language; storyteller: Storyteller; harshness: number; roll?: number; title: string; beats: number; irreversible: number; judgement?: { harshness_fit: number; storyteller_fit: number; roll_obedience: number | null; irreversible_ok: boolean; notes?: string }; costUsd: number }>;
+  summary: { harshness_fit: Record<string, number> | null; storyteller_fit: Record<string, number> | null; roll_obedience: Record<string, number> | null; harshness_distance: Record<string, number>; costUsd: number };
 }
 
 export interface ModelStatus {

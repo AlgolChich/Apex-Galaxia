@@ -9,10 +9,13 @@ import {
   applyDiff,
   countWords,
   createProject,
+  importBibleEntries,
+  importManuscript,
   entryTemplate,
   exportBook,
   formatDiff,
   formatEvalReport,
+  formatPlannerReport,
   formatInspector,
   formatLintReport,
   improveHarness,
@@ -25,6 +28,7 @@ import {
   renderBeatSheet,
   resolveResources,
   runEvalSuite,
+  runPlannerEvals,
   upsertEntry,
   ProjectStore,
   type BoardTemplate,
@@ -127,6 +131,39 @@ export function buildProgram(): Command {
       }
     });
 
+  program
+    .command('import <file> [dir]')
+    .description('import an existing manuscript (Markdown or plain text) as chapters; creates the project when the folder has none')
+    .option('--title <title>', 'story title when creating the project (default: the file name)')
+    .option('--lang <lang>', 'story language when creating the project: ru or en (default: detected from the text)')
+    .option('--status <status>', 'chapter status for the imported chapters: draft | revised | final', 'draft')
+    .action(async (file: string, dir: string | undefined, opts: { title?: string; lang?: string; status?: string }, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const text = await fs.readFile(path.resolve(file), 'utf8');
+        const root = path.resolve(dir ?? g.project ?? process.cwd());
+        let store: ProjectStore;
+        let created = false;
+        try {
+          store = await ProjectStore.open(root);
+        } catch {
+          const cyrillic = (text.match(/[Ѐ-ӿ]/g) ?? []).length;
+          const latin = (text.match(/[A-Za-z]/g) ?? []).length;
+          const language = (opts.lang as Language | undefined) ?? (cyrillic > latin ? 'ru' : 'en');
+          store = await createProject(root, { title: opts.title ?? path.basename(file).replace(/\.[^.]+$/, ''), language });
+          created = true;
+        }
+        const chapters = await importManuscript(store, text, { status: (opts.status ?? 'draft') as 'draft' | 'revised' | 'final' });
+        const t = makeT(g.ui ?? store.config.language);
+        out({ json: Boolean(g.json) }, { root: store.layout.root, created, chapters: chapters.map((c) => ({ number: c.front.number, title: c.front.title, words: c.front.words })) }, () =>
+          [created ? `${t('created')}: ${store.layout.root}` : store.layout.root, ...chapters.map((c) => `  ${c.front.number}. ${c.front.title} (${c.front.words} ${t('words')})`)].join('\n'),
+        );
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
   // ---------------------------------------------------------------------------
   program
     .command('open [dir]')
@@ -172,6 +209,7 @@ export function buildProgram(): Command {
     .option('--at <chapter>', 'chapter number to continue (default: the last)')
     .option('--pin <slugs>', 'comma-separated Bible slugs to pin')
     .option('--accept', 'accept the suggestion immediately (headless use)')
+    .option('--candidates <n>', 'draft 2 or 3 candidates and rank them with the critic; accept one by id afterwards')
     .option('--inspect', 'print the context inspector')
     .option('--quiet', 'do not stream the text')
     .action(async (dir: string | undefined, opts: Record<string, string | boolean | undefined>, cmd: Command) => {
@@ -186,6 +224,26 @@ export function buildProgram(): Command {
         else if (opts['chapter'] !== undefined) mode = 'chapter';
         const chapters = await harness.store.listChapters();
         const chapter = opts['at'] ? await harness.store.getChapter(Number(opts['at'])) : mode === 'chapter' ? undefined : chapters[chapters.length - 1];
+        if (typeof opts['candidates'] === 'string') {
+          const outcome = await harness.writeCandidates(mode, {
+            count: Number(opts['candidates']),
+            ...(chapter ? { chapter } : {}),
+            ...(opts['words'] ? { targetWords: Number(opts['words']) } : {}),
+            ...(typeof opts['guided'] === 'string' ? { instruction: opts['guided'] } : {}),
+            ...(typeof opts['scene'] === 'string' ? { sceneCard: opts['scene'] } : {}),
+            ...(mode === 'chapter' && typeof opts['chapter'] === 'string' ? { chapterNumber: Number(opts['chapter']) } : {}),
+            ...(typeof opts['title'] === 'string' ? { title: opts['title'] } : {}),
+            onCandidate: (done, total) => {
+              if (!ctx.json) console.log(`[candidate ${done}/${total}]`);
+            },
+          });
+          out(ctx, { candidates: outcome.candidates.map((c) => ({ suggestion: c.suggestion.front, text: c.text, lint: c.lint.counts, score: c.score, critic: c.critic ?? null, model: c.model, costUsd: c.costUsd })), ranking: outcome.ranking, costUsd: outcome.costUsd }, () =>
+            outcome.candidates
+              .map((c, i) => `=== ${t('suggestion')} ${c.suggestion.front.id} (${i + 1}/${outcome.candidates.length}${c.score !== null ? `, ${t('scores')} ${c.score.toFixed(2)}` : ''}, ${c.model}, $${c.costUsd.toFixed(4)})\n\n${c.text}\n`)
+              .join('\n') + `\n${t('acceptHint')} <id>; best by the critic: ${outcome.ranking[0]}`,
+          );
+          return;
+        }
         const stream = !opts['quiet'] && !ctx.json;
         const outcome = await harness.write(mode, {
           ...(chapter ? { chapter } : {}),
@@ -316,9 +374,10 @@ export function buildProgram(): Command {
     .option('--chapters <n>', 'how many chapters to write (default: the length class)')
     .option('--resume <id>', 'resume a saved run')
     .option('--approve-outline', 'approve the outline of a long story and continue')
+    .option('--approve-decision', 'approve the irreversible choices a run is waiting on and continue')
     .option('--no-report', 'skip the reader\'s report at the end')
     .option('--quiet', 'do not stream the text')
-    .action(async (dir: string | undefined, opts: { chapters?: string; resume?: string; approveOutline?: boolean; report?: boolean; quiet?: boolean }, cmd: Command) => {
+    .action(async (dir: string | undefined, opts: { chapters?: string; resume?: string; approveOutline?: boolean; approveDecision?: boolean; report?: boolean; quiet?: boolean }, cmd: Command) => {
       try {
         const g = globals(cmd);
         const ctx = await cliContext(g, dir);
@@ -328,13 +387,14 @@ export function buildProgram(): Command {
           ...(opts.chapters ? { chapters: Number(opts.chapters) } : {}),
           ...(opts.resume ? { resume: opts.resume } : {}),
           ...(opts.approveOutline ? { approveOutline: true } : {}),
+          ...(opts.approveDecision ? { approveDecision: true } : {}),
           readerReport: opts.report !== false,
           onProgress: (_s, message) => {
             if (!ctx.json) console.log(`\n[run] ${message}`);
           },
           ...(stream ? { onDelta: (d: string) => process.stdout.write(d) } : {}),
         });
-        out(ctx, state, () => `run ${state.id}: ${state.status} · chapters ${state.completed.length}/${state.target_chapters} · $${state.cost_usd.toFixed(3)}${state.error ? `\n${state.error}` : ''}${state.status === 'awaiting_outline_approval' ? `\nReview plan/outline.md, then: apex run --resume ${state.id} --approve-outline` : ''}`);
+        out(ctx, state, () => `run ${state.id}: ${state.status} · chapters ${state.completed.length}/${state.target_chapters} · $${state.cost_usd.toFixed(3)}${state.error ? `\n${state.error}` : ''}${state.status === 'awaiting_outline_approval' ? `\nReview plan/outline.md, then: apex run --resume ${state.id} --approve-outline` : ''}${state.status === 'awaiting_decision' && state.pending_decision ? `\nChapter ${state.pending_decision.chapter} plans irreversible choices:\n${state.pending_decision.items.map((i) => `  - ${i.who}: ${i.what}`).join('\n')}\nApprove with: apex run --resume ${state.id} --approve-decision, or edit plan/beats/ and resume.` : ''}`);
         if (state.status === 'failed' || state.status === 'paused') process.exitCode = 1;
       } catch (error) {
         printError(error);
@@ -350,12 +410,32 @@ export function buildProgram(): Command {
     .option('--variant <dir>', 'a folder whose prompts/ and style/ override the shipped ones')
     .option('--baseline <results.json>', 'earlier results to compare against')
     .option('--no-critic', 'lint only (no model calls)')
+    .option('--ab <file>', 'a project\'s history/ab.jsonl: the Author\'s pairwise choices join the report')
+    .option('--planner', 'the planner evals instead: every brief in evals/planner under each storyteller, harshness and forced d20; writes docs/evals/<date>-planner.md')
     .option('--out <dir>', 'where to write the report and results (default docs/evals)')
-    .action(async (opts: { golden?: string; fault?: string; variant?: string; baseline?: string; critic?: boolean; out?: string }, cmd: Command) => {
+    .action(async (opts: { golden?: string; fault?: string; variant?: string; baseline?: string; critic?: boolean; ab?: string; planner?: boolean; out?: string }, cmd: Command) => {
       try {
         const g = globals(cmd);
         const resources = await resolveResources();
         const { adapter } = await createAdapter({ ...(g.cassette ? { cassette: g.cassette } : {}) });
+        if (opts.planner) {
+          const planner = await runPlannerEvals({
+            adapter,
+            resources,
+            judge: opts.critic !== false,
+            onProgress: (m) => {
+              if (!g.json) console.log(m);
+            },
+          });
+          const plannerReport = formatPlannerReport(planner);
+          const dir = opts.out ? path.resolve(opts.out) : path.join(resources.root, 'docs', 'evals');
+          await fs.mkdir(dir, { recursive: true });
+          const name = `${planner.ran_at.slice(0, 10)}-planner`;
+          await fs.writeFile(path.join(dir, `${name}.md`), plannerReport, 'utf8');
+          await fs.writeFile(path.join(dir, `${name}.json`), JSON.stringify(planner, null, 2) + '\n', 'utf8');
+          out({ json: Boolean(g.json) }, planner, () => `${plannerReport}\nwritten: ${path.join(dir, `${name}.md`)}`);
+          return;
+        }
         const results = await runEvalSuite({
           adapter,
           resources,
@@ -363,6 +443,7 @@ export function buildProgram(): Command {
           ...(opts.fault ? { faultDir: path.resolve(opts.fault) } : {}),
           ...(opts.variant ? { variantDir: path.resolve(opts.variant) } : {}),
           critic: opts.critic !== false,
+          ...(opts.ab ? { abFile: path.resolve(opts.ab) } : {}),
           onProgress: (m) => {
             if (!g.json) console.log(m);
           },
@@ -728,6 +809,21 @@ export function buildProgram(): Command {
           body,
         });
         out(ctx, { slug: entry.slug, path: entry.path }, () => `${ctx.t('entryWritten')}: ${entry.path}`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  bible
+    .command('import <file> [dir]')
+    .description('import entries of one kind from a Markdown file: one # or ## heading per entry, the section as its body')
+    .requiredOption('--kind <kind>', 'character | location | faction | item')
+    .action(async (file: string, dir: string | undefined, opts: { kind: string }, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        const store = await ProjectStore.open(ctx.root);
+        const entries = await importBibleEntries(store, await fs.readFile(path.resolve(file), 'utf8'), opts.kind as EntryKind);
+        out(ctx, entries.map((e) => ({ kind: e.kind, slug: e.slug, name: e.front.name, path: e.path })), () => entries.map((e) => `${ctx.t('entryWritten')}: ${e.path}`).join('\n') || '—');
       } catch (error) {
         printError(error);
         process.exitCode = 1;

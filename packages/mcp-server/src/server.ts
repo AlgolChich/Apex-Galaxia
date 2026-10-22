@@ -15,6 +15,7 @@ import {
   entryTemplate,
   exportBook,
   formatEvalReport,
+  formatPlannerReport,
   formatInspector,
   formatLintReport,
   getEntry,
@@ -26,6 +27,7 @@ import {
   renderBeatSheet,
   resolveResources,
   runEvalSuite,
+  runPlannerEvals,
   saveResearch,
   upsertEntry,
   ENTRY_KINDS,
@@ -103,6 +105,10 @@ export class ApexMcpServer {
       getResources: () => this.getResources(),
       keySource: () => this.keySource,
       projectRoot: () => this.root,
+      openProject: async (root) => {
+        this.root = path.resolve(root);
+        this.harness = undefined;
+      },
     });
   }
 
@@ -917,15 +923,21 @@ export class ApexMcpServer {
 
     s.registerTool(
       'eval_run',
-      { title: 'Run the eval suite', description: 'Linter coverage on the fault set and, with critic=true and an API key, critic scores on the golden and fault sets. Returns the results and the Markdown report (Section 6.5).', inputSchema: { critic: z.boolean().optional(), golden_dir: z.string().optional(), variant_dir: z.string().optional() } },
-      async ({ critic, golden_dir, variant_dir }) => {
+      { title: 'Run the eval suite', description: 'Linter coverage on the fault set and, with critic=true and an API key, critic scores on the golden and fault sets. Returns the results and the Markdown report (Section 6.5). planner=true runs the planner evals instead (every brief under each storyteller, harshness and forced d20; judge=critic). The open project\'s A/B choices join the report.', inputSchema: { critic: z.boolean().optional(), golden_dir: z.string().optional(), variant_dir: z.string().optional(), planner: z.boolean().optional() } },
+      async ({ critic, golden_dir, variant_dir, planner }) => {
         try {
+          if (planner) {
+            const results = await runPlannerEvals({ adapter: await this.getAdapter(), resources: await this.getResources(), judge: critic ?? false });
+            return ok({ results, report: formatPlannerReport(results) }, formatPlannerReport(results));
+          }
+          const abFile = this.root ? path.join(this.root, 'history', 'ab.jsonl') : undefined;
           const results = await runEvalSuite({
             adapter: await this.getAdapter(),
             resources: await this.getResources(),
             critic: critic ?? false,
             ...(golden_dir ? { goldenDir: path.resolve(golden_dir) } : {}),
             ...(variant_dir ? { variantDir: path.resolve(variant_dir) } : {}),
+            ...(abFile ? { abFile } : {}),
           });
           return ok({ results, report: formatEvalReport(results) }, formatEvalReport(results));
         } catch (error) {

@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type { ServerNotification, ServerRequest } from '@modelcontextprotocol/sdk/types.js';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -9,13 +11,20 @@ import {
   ENTRY_KINDS,
   ProjectConfigSchema,
   UserConfigSchema,
+  createProject,
   defaultUserDir,
   getEntry,
+  importBibleEntries,
+  importManuscript,
   isApexError,
   loadNarrator,
+  matchNarratorCommand,
+  splitManuscript,
   type Harness,
+  type Language,
   type ModelAdapter,
   type ProjectStore,
+  ProjectStore as Store,
   type Resources,
   type RunState,
 } from '@apex-galaxia/core';
@@ -29,6 +38,8 @@ export interface AppContext {
   /** Where the model key came from (`env`, `env-file`, `none`, `replay`, `scripted`, `custom`). */
   keySource(): string;
   projectRoot(): string | undefined;
+  /** Make a (new) folder the open project, as project_open does. */
+  openProject(root: string): Promise<void>;
 }
 
 type ToolResult = { content: Array<{ type: 'text'; text: string }>; structuredContent?: Record<string, unknown>; isError?: boolean };
@@ -57,6 +68,7 @@ interface LiveRun {
  */
 export function registerAppTools(server: McpServer, ctx: AppContext): void {
   const runs = new Map<string, LiveRun>();
+  const onProjectChanged = (root: string) => ctx.openProject(root);
 
   const notify = async (logger: string, data: Record<string, unknown>): Promise<void> => {
     try {
@@ -245,6 +257,160 @@ export function registerAppTools(server: McpServer, ctx: AppContext): void {
     },
   );
 
+  // ---- Import of existing stories ----------------------------------------------------------
+  server.registerTool(
+    'project_import',
+    {
+      title: 'Import a manuscript',
+      description: 'Split a Markdown or plain-text manuscript into chapters (headings such as «Глава 3. Фары» or "Chapter 3: Eleven" open a chapter) and add them to a project; creates the project in `path` when it has none (title and language then apply). preview=true only reports the split.',
+      inputSchema: { path: z.string(), text: z.string().optional(), file: z.string().optional(), title: z.string().optional(), language: z.enum(['ru', 'en']).optional(), status: z.enum(['draft', 'revised', 'final']).optional(), preview: z.boolean().optional() },
+    },
+    async ({ path: p, text, file, title, language, status, preview }) => {
+      try {
+        const manuscript = text ?? (file ? await fs.readFile(path.resolve(file), 'utf8') : undefined);
+        if (manuscript === undefined) throw new Error('Pass text or file');
+        const root = path.resolve(p);
+        const cyrillic = (manuscript.match(/[Ѐ-ӿ]/g) ?? []).length;
+        const latin = (manuscript.match(/[A-Za-z]/g) ?? []).length;
+        const lang: Language = language ?? (cyrillic > latin ? 'ru' : 'en');
+        if (preview) {
+          const parts = splitManuscript(manuscript, lang);
+          return ok({ root, language: lang, chapters: parts.map((c, i) => ({ number: i + 1, title: c.title, words: c.body.split(/\s+/).filter(Boolean).length })) });
+        }
+        let store: ProjectStore;
+        let created = false;
+        try {
+          store = await Store.open(root);
+        } catch {
+          store = await createProject(root, { title: title ?? path.basename(root), language: lang });
+          created = true;
+        }
+        const chapters = await importManuscript(store, manuscript, status ? { status } : {});
+        await onProjectChanged(store.layout.root);
+        return ok({ root: store.layout.root, created, chapters: chapters.map((c) => ({ number: c.front.number, title: c.front.title, stem: c.stem, words: c.front.words })) });
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'bible_import',
+    { title: 'Import Bible entries', description: 'Create or update entries of one kind from Markdown: one # or ## heading per entry, the section as its body. Only after the Author confirmed.', inputSchema: { kind: z.enum(ENTRY_KINDS), text: z.string().optional(), file: z.string().optional() } },
+    async ({ kind, text, file }) => {
+      try {
+        const harness = await ctx.getHarness();
+        const markdown = text ?? (file ? await fs.readFile(path.resolve(file), 'utf8') : undefined);
+        if (markdown === undefined) throw new Error('Pass text or file');
+        const entries = await importBibleEntries(harness.store, markdown, kind);
+        await harness.refresh();
+        return ok({ entries: entries.map((e) => ({ kind: e.kind, slug: e.slug, name: e.front.name, summary: e.summary, path: e.path })) });
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  // ---- The narrator outside the story, candidates and A/B ---------------------------------
+  const deltaSender = (extra: RequestHandlerExtra<ServerRequest, ServerNotification>): ((text: string) => void) | undefined => {
+    const token = extra._meta?.progressToken;
+    if (token === undefined) return undefined;
+    let progress = 0;
+    return (text: string) => {
+      progress += text.length;
+      void extra.sendNotification({ method: 'notifications/progress', params: { progressToken: token, progress, message: text } }).catch(() => undefined);
+    };
+  };
+
+  server.registerTool(
+    'narrator_chat',
+    {
+      title: 'Talk with the narrator (model)',
+      description: 'One turn with the narrator persona outside the story: a short honest reply in the interface language, and an `action` when the Author asked for a command (next, plan, chronicle, directions, rating…). Slash commands and bare command words are recognized without a model call. Streams the reply with a progress token.',
+      inputSchema: { message: z.string().min(1), history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })).optional(), ui_language: z.enum(['ru', 'en']).optional() },
+    },
+    async ({ message, history, ui_language }, extra) => {
+      try {
+        const harness = await ctx.getHarness();
+        const command = matchNarratorCommand(message, harness.narrator.commands);
+        const ui = ui_language ?? harness.language;
+        if (command && ctx.keySource() === 'none') {
+          const reply = ui === 'ru' ? `Поняла: ${command.id}${command.argument ? ` ${command.argument}` : ''}. Модели нет, поэтому без комментариев.` : `Understood: ${command.id}${command.argument ? ` ${command.argument}` : ''}. No model here, so no commentary.`;
+          return ok({ reply, action: command, command, model: null, costUsd: 0 }, reply);
+        }
+        const onDelta = deltaSender(extra);
+        const result = await harness.chat({ message, ...(history ? { history } : {}), uiLanguage: ui, ...(onDelta ? { onDelta } : {}) });
+        const action = result.action ?? command;
+        return ok({ reply: result.reply, action: action ?? null, command: command ?? null, model: result.run.result.model, costUsd: result.run.result.costUsd, warnings: result.run.warnings }, result.reply);
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'write_candidates',
+    {
+      title: 'Write: candidates (model)',
+      description: 'Draft two or three candidates for one Write and rank them with the critic. Each is a pending suggestion: accept one with suggestion_accept, discard the rest, record the choice with ab_record. Progress notifications count finished candidates.',
+      inputSchema: { mode: z.enum(['continue', 'guided', 'scene', 'chapter']).optional(), count: z.number().int().min(2).max(3).optional(), chapter: z.number().int().optional(), instruction: z.string().optional(), scene_card: z.string().optional(), target_words: z.number().int().optional(), cursor: z.number().int().optional(), chapter_number: z.number().int().optional(), title: z.string().optional(), pins: z.array(z.string()).optional() },
+    },
+    async (input, extra) => {
+      try {
+        const harness = await ctx.getHarness();
+        const mode = input.mode ?? (input.instruction ? 'guided' : 'continue');
+        const chapter = input.chapter !== undefined ? await harness.store.getChapter(input.chapter) : undefined;
+        const token = extra._meta?.progressToken;
+        const outcome = await harness.writeCandidates(mode, {
+          ...(input.count !== undefined ? { count: input.count } : {}),
+          ...(chapter ? { chapter } : {}),
+          ...(input.instruction ? { instruction: input.instruction } : {}),
+          ...(input.scene_card ? { sceneCard: input.scene_card } : {}),
+          ...(input.target_words !== undefined ? { targetWords: input.target_words } : {}),
+          ...(input.cursor !== undefined ? { cursor: input.cursor } : {}),
+          ...(input.chapter_number !== undefined ? { chapterNumber: input.chapter_number } : {}),
+          ...(input.title ? { title: input.title } : {}),
+          ...(input.pins ? { pins: input.pins } : {}),
+          onCandidate: (done, total) => {
+            if (token !== undefined) void extra.sendNotification({ method: 'notifications/progress', params: { progressToken: token, progress: done, total, message: `candidate ${done}/${total}` } }).catch(() => undefined);
+          },
+        });
+        return ok(
+          { mode: outcome.mode, candidates: outcome.candidates.map((c) => ({ suggestion: c.suggestion.front, text: c.text, lint: c.lint, critic: c.critic ?? null, score: c.score, model: c.model, costUsd: c.costUsd })), ranking: outcome.ranking, costUsd: outcome.costUsd },
+          outcome.candidates.map((c, i) => `=== ${c.suggestion.front.id} (${i + 1}/${outcome.candidates.length}${c.score !== null ? `, score ${c.score}` : ''})\n${c.text}`).join('\n\n'),
+        );
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'ab_record',
+    { title: 'Record a pairwise choice', description: 'The Author chose between two suggestions («which continuation is better?»); the choice and whether it agreed with the critic go to history/ab.jsonl and the eval record.', inputSchema: { left: z.string(), right: z.string(), choice: z.enum(['left', 'right', 'tie']), note: z.string().optional(), task: z.string().optional(), critic_preferred: z.enum(['left', 'right']).nullable().optional() } },
+    async ({ left, right, choice, note, task, critic_preferred }) => {
+      try {
+        const harness = await ctx.getHarness();
+        const record = await harness.recordAb({ left, right, choice, ...(note ? { note } : {}), ...(task ? { task } : {}), criticPreferred: critic_preferred ?? null });
+        return ok({ record });
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool('ab_list', { title: 'List pairwise choices', description: 'Every A/B choice of the open project with the critic agreement rate.', inputSchema: {} }, async () => {
+    try {
+      const harness = await ctx.getHarness();
+      const records = await harness.listAb();
+      const judged = records.filter((r) => r.agreed !== null);
+      const agreed = judged.filter((r) => r.agreed === true).length;
+      return ok({ records, count: records.length, judged: judged.length, critic_agreement: judged.length > 0 ? Math.round((agreed / judged.length) * 1000) / 1000 : null });
+    } catch (error) {
+      return fail(error);
+    }
+  });
+
   // ---- Lint whitelist, voice card, narrator options -----------------------------------------
   server.registerTool(
     'lint_whitelist_add',
@@ -313,10 +479,10 @@ export function registerAppTools(server: McpServer, ctx: AppContext): void {
     'run_start',
     {
       title: 'Start or resume an autonomous run',
-      description: 'Write the story unattended in the background (plan → write → chronicle → summary per chapter, Muse Layer on). Returns the run id at once; progress, streamed text and the final state arrive as logging notifications with logger "apex.run". Pause with run_pause, read with run_get.',
-      inputSchema: { chapters: z.number().int().positive().optional(), resume: z.string().optional(), approve_outline: z.boolean().optional(), reader_report: z.boolean().optional() },
+      description: 'Write the story unattended in the background (plan → write → chronicle → summary per chapter, Muse Layer on). Returns the run id at once; progress, streamed text and the final state arrive as logging notifications with logger "apex.run". Pause with run_pause, read with run_get. A run stops with status awaiting_decision when a chapter plans irreversible choices; resume it with approve_decision after the Author agreed, or edit plan/beats/<nn>.json and resume.',
+      inputSchema: { chapters: z.number().int().positive().optional(), resume: z.string().optional(), approve_outline: z.boolean().optional(), approve_decision: z.boolean().optional(), reader_report: z.boolean().optional() },
     },
-    async ({ chapters, resume, approve_outline, reader_report }) => {
+    async ({ chapters, resume, approve_outline, approve_decision, reader_report }) => {
       try {
         if (resume && runs.get(resume)?.state.status === 'running') return fail(new Error(`Run ${resume} is already running`));
         const harness = await ctx.getHarness();
@@ -330,12 +496,13 @@ export function registerAppTools(server: McpServer, ctx: AppContext): void {
           ...(chapters !== undefined ? { chapters } : {}),
           ...(resume ? { resume } : {}),
           ...(approve_outline !== undefined ? { approveOutline: approve_outline } : {}),
+          ...(approve_decision !== undefined ? { approveDecision: approve_decision } : {}),
           ...(reader_report !== undefined ? { readerReport: reader_report } : {}),
           signal: controller.signal,
           onProgress: (state, message) => {
             if (live.current) live.current.state = state;
             resolveId(state);
-            void notify('apex.run', { run_id: state.id, status: state.status, stage: state.stage, next_chapter: state.next_chapter, completed: state.completed.length, target: state.target_chapters, cost_usd: state.cost_usd, message });
+            void notify('apex.run', { run_id: state.id, status: state.status, stage: state.stage, next_chapter: state.next_chapter, completed: state.completed.length, target: state.target_chapters, cost_usd: state.cost_usd, message, ...(state.pending_decision ? { pending_decision: state.pending_decision } : {}) });
           },
           onDelta: (text) => {
             const id = live.current?.state.id;

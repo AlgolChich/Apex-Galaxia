@@ -18,6 +18,7 @@
       "enum": [
         "running",
         "awaiting_outline_approval",
+        "awaiting_decision",
         "paused",
         "completed",
         "failed"
@@ -65,6 +66,49 @@
     },
     "pending_suggestion": {
       "type": "string"
+    },
+    "pending_decision": {
+      "type": "object",
+      "properties": {
+        "chapter": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "who": {
+                "type": "string",
+                "minLength": 1
+              },
+              "what": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "who",
+              "what"
+            ]
+          }
+        }
+      },
+      "required": [
+        "chapter",
+        "items"
+      ]
+    },
+    "approved_decisions": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      }
     },
     "error": {
       "type": "string"

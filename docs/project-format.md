@@ -108,3 +108,11 @@ the last line per id.
 with `UNSUPPORTED_FORMAT_VERSION`; an older one is migrated step by step with a backup under
 `history/migrations/`. Every write is atomic (temp file + rename). The harness never rewrites a
 chapter: suggestions apply on accept, and the only writer of chapters is `ProjectStore.saveChapter`.
+
+## Added in Phase 4
+
+- `history/ab.jsonl`: one line per pairwise choice the Author made between two suggestions
+  (`left`, `right`, `choice`, `critic_preferred`, `agreed`, optional `note`).
+- `history/runs/<id>.json` gains `pending_decision` and `approved_decisions`: a run stops with
+  status `awaiting_decision` when a beat sheet lists `irreversible` choices (`plan/beats/<nn>.json`)
+  and continues once the Author approved them.

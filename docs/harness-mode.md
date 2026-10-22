@@ -58,7 +58,16 @@ Project: `project_open`, `project_create`, `project_chapters`, `chapter_get`. Bi
 `lint_whitelist_add`, `voice_card` (model), `narrator_options`, `run_start` (background, progress
 as logging notifications with logger `apex.run`), `run_pause`, `run_get`, `run_list`.
 `write_continue` and `write_chapter` stream their text as `notifications/progress` when the
-client sends a progress token; `suggestion_accept` takes `edited_text`. Resources: `apex://project/config`, `apex://project/chronicle/state`,
+client sends a progress token; `suggestion_accept` takes `edited_text`. Narrator and Phase 4:
+`narrator_chat` (model; slash commands and bare command words such as «дальше» are recognized
+without a model and come back as `action`), `write_candidates` (model; 2–3 drafts ranked by the
+critic, each a pending suggestion), `ab_record`, `ab_list` (the Author's pairwise choices,
+`history/ab.jsonl`, joined into `eval_run` reports), `project_import` (a manuscript split into
+chapters by headings; creates the project when needed), `bible_import` (entries from Markdown
+sections), `eval_run {planner: true}` (the planner evals: every brief in `evals/planner` under
+each storyteller, harshness and forced d20). `run_start` stops with status `awaiting_decision`
+when a beat sheet lists irreversible choices; resume with `approve_decision` after the Author
+agreed. Resources: `apex://project/config`, `apex://project/chronicle/state`,
 `apex://project/chronicle/log`, `apex://project/brief`, `apex://project/chapters/{stem}`,
 `apex://project/bible/{kind}/{slug}`, `apex://prompts/{task}`. Prompts: `brief`, `handover`.
 

@@ -52,6 +52,8 @@ export const EvalResultsSchema = z.object({
   summary: z.object({
     golden: z.object({ count: z.number(), mean: z.record(z.string(), z.number()).nullable() }),
     fault: z.object({ count: z.number(), mean: z.record(z.string(), z.number()).nullable(), lintCoverage: z.number() }),
+    /** Pairwise A/B choices from a project's history/ab.jsonl: how often the Author agreed with the critic's ranking. */
+    ab: z.object({ count: z.number(), judged: z.number(), critic_agreement: z.number().nullable() }).optional(),
     costUsd: z.number(),
   }),
 });
@@ -93,7 +95,21 @@ export interface RunEvalOptions {
   variantName?: string;
   /** Skip the critic (lint only), e.g. without a key. */
   critic?: boolean;
+  /** A project's history/ab.jsonl: the Author's pairwise choices join the record. */
+  abFile?: string;
   onProgress?: (message: string) => void;
+}
+
+/** Summarize an A/B file: how many choices, how many had a critic opinion, how often they agreed. */
+export async function summarizeAb(file: string): Promise<{ count: number; judged: number; critic_agreement: number | null }> {
+  const text = await fs.readFile(file, 'utf8').catch(() => '');
+  const records = text
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
+    .map((l) => JSON.parse(l) as { agreed?: boolean | null });
+  const judged = records.filter((r) => r.agreed === true || r.agreed === false);
+  const agreed = judged.filter((r) => r.agreed === true).length;
+  return { count: records.length, judged: judged.length, critic_agreement: judged.length > 0 ? Math.round((agreed / judged.length) * 1000) / 1000 : null };
 }
 
 /**
@@ -148,6 +164,7 @@ export async function runEvalSuite(options: RunEvalOptions): Promise<EvalResults
   const fault = results.filter((r) => r.set === 'fault');
   const expectedTotal = passages.filter((p) => p.set === 'fault').reduce((n, p) => n + p.expect.length, 0);
   const missedTotal = fault.reduce((n, r) => n + r.lint.missed.length, 0);
+  const ab = options.abFile ? await summarizeAb(options.abFile) : undefined;
   return {
     ran_at: isoNow(),
     variant: options.variantName ?? (options.variantDir ? path.basename(options.variantDir) : 'shipped'),
@@ -156,6 +173,7 @@ export async function runEvalSuite(options: RunEvalOptions): Promise<EvalResults
     summary: {
       golden: { count: golden.length, mean: meanScores(golden) },
       fault: { count: fault.length, mean: meanScores(fault), lintCoverage: expectedTotal === 0 ? 1 : Math.round(((expectedTotal - missedTotal) / expectedTotal) * 1000) / 1000 },
+      ...(ab ? { ab } : {}),
       costUsd: Math.round(results.reduce((s, r) => s + r.costUsd, 0) * 1e6) / 1e6,
     },
   };
@@ -191,6 +209,10 @@ export function formatEvalReport(results: EvalResults, baseline?: EvalResults): 
     `| fault | ${results.summary.fault.count} | ${fmtMean(results.summary.fault.mean)} | ${(results.summary.fault.lintCoverage * 100).toFixed(1)}% |`,
     '',
   ];
+  if (results.summary.ab) {
+    const ab = results.summary.ab;
+    lines.push(`Pairwise A/B: ${ab.count} choice(s) by the Author, ${ab.judged} with a critic opinion, critic agreement ${ab.critic_agreement === null ? '—' : `${(ab.critic_agreement * 100).toFixed(0)}%`}.`, '');
+  }
   if (baseline) {
     lines.push(`Delta against ${baseline.variant} (${baseline.ran_at.slice(0, 10)}): golden ${delta(results.summary.golden.mean, baseline.summary.golden.mean) || '—'}; fault ${delta(results.summary.fault.mean, baseline.summary.fault.mean) || '—'}; lint coverage ${((results.summary.fault.lintCoverage - baseline.summary.fault.lintCoverage) * 100).toFixed(1)} pp.`, '');
   }

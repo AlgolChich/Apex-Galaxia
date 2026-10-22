@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { ApexError } from '../util/errors.js';
-import { countWords, isoNow, sha256, shortId } from '../util/fs.js';
+import { appendLine, countWords, isoNow, sha256, shortId } from '../util/fs.js';
 import { slugify } from '../util/slug.js';
 import { CachedTokenCounter, HeuristicTokenCounter, type TokenCounter } from '../context/tokens.js';
 import { assemblePrompt, chapterHeading, loadSummaries, type AssembleRequest, type AssembledPrompt } from '../context/assembler.js';
@@ -10,8 +10,9 @@ import { loadBible, renderEntry, type BibleSnapshot } from '../bible/entries.js'
 import { Chronicle } from '../chronicle/chronicle.js';
 import { renderStateYaml } from '../chronicle/chronicle.js';
 import { rollD20, type Rng } from '../narrator/dice.js';
-import { loadNarrator, lengthDef, type NarratorProfile } from '../narrator/profile.js';
-import { PromptLibrary } from '../prompts/templates.js';
+import { loadNarrator, lengthDef, renderSettingsLine, type NarratorProfile } from '../narrator/profile.js';
+import { parseChatAction, renderCommands, type CommandMatch } from '../narrator/commands.js';
+import { LANGUAGE_NAMES, PromptLibrary } from '../prompts/templates.js';
 import { ProjectStore, type ChapterFile, type SuggestionFile } from '../project/store.js';
 import { Canvas } from '../canvas/board.js';
 import {
@@ -41,12 +42,13 @@ import {
   type Directions,
   type LessonProposal,
   type Roll,
+  type Language,
 } from '../project/schemas.js';
 import { resolveResources, type Resources } from '../resources.js';
 import { loadStyleMemory, type StyleMemory } from '../style/memory.js';
 import { ModelRegistry } from '../adapters/models.js';
 import { generateLogged, type LoggedResult } from '../adapters/logged.js';
-import { estimateCost, type GenerateOptions, type ModelAdapter } from '../adapters/types.js';
+import { estimateCost, type ChatMessage, type GenerateOptions, type ModelAdapter } from '../adapters/types.js';
 import { formatLintReport, lintText, normalizeRussianDialogue, type LintReport } from '../lint/index.js';
 import { enforceJsonContract, enforceProseContract } from './contracts.js';
 import { diffParagraphs, type DiffBlock } from './diff.js';
@@ -101,6 +103,43 @@ export interface WriteOutcome {
   model: string;
   stages: MuseStage[];
   critic?: CriticResult;
+}
+
+export interface CandidateOutcome {
+  suggestion: SuggestionFile;
+  text: string;
+  lint: LintReport;
+  critic?: CriticResult;
+  /** Mean of the critic's seven scores; null when no critic ran. */
+  score: number | null;
+  model: string;
+  costUsd: number;
+}
+
+export interface CandidatesOutcome {
+  mode: WriteMode;
+  candidates: CandidateOutcome[];
+  /** Suggestion ids, best first by the critic's mean score. */
+  ranking: string[];
+  costUsd: number;
+}
+
+/** One line of history/ab.jsonl: the Author's choice between two suggestions. */
+export interface AbRecord {
+  ts: string;
+  task: string;
+  left: string;
+  right: string;
+  choice: 'left' | 'right' | 'tie';
+  note?: string;
+  critic_preferred: 'left' | 'right' | null;
+  /** Whether the Author agreed with the critic's ranking; null when the critic had no opinion. */
+  agreed: boolean | null;
+}
+
+function meanScore(critic: CriticResult): number {
+  const values = Object.values(critic.scores);
+  return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100;
 }
 
 export interface Estimate {
@@ -705,6 +744,110 @@ export class Harness {
     await this.store.setSuggestionStatus(suggestionId, 'discarded');
   }
 
+  /**
+   * Two or three candidates for one Write, drafted separately and ranked by the critic
+   * (Section 4.1). Each candidate is a pending suggestion; the Author accepts one and the
+   * app discards the rest. No revision loop here: ranking is the Muse Layer's job in this mode.
+   */
+  async writeCandidates(mode: WriteMode, params: WriteParams & { count?: number; onCandidate?: (done: number, total: number) => void } = {}): Promise<CandidatesOutcome> {
+    const count = Math.max(2, Math.min(3, params.count ?? 2));
+    const prepared = await this.prepareWrite(mode, params, true);
+    const candidates: CandidateOutcome[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const run = await this.runTask(prepared.request, { ...(prepared.expectHeading ? { expectHeading: prepared.expectHeading } : {}), maxTokens: mode === 'chapter' ? 8_000 : 4_000 });
+      let critic: CriticResult | undefined;
+      let costUsd = run.result.costUsd;
+      if (run.violations.length === 0 && run.text.trim().length > 0) {
+        const judged = await this.critique(run.text, prepared.request.chapter);
+        critic = judged.result;
+        costUsd += judged.run.result.costUsd;
+      }
+      const finished = await this.finishWrite(prepared, run.text, { model: run.result.model, callId: run.result.callId, costUsd, warnings: [...run.warnings, `candidate ${i + 1} of ${count}`] });
+      candidates.push({ suggestion: finished.suggestion, text: finished.text, lint: finished.lint, ...(critic ? { critic } : {}), score: critic ? meanScore(critic) : null, model: run.result.model, costUsd });
+      params.onCandidate?.(i + 1, count);
+    }
+    const ranking = [...candidates].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).map((c) => c.suggestion.front.id);
+    return { mode, candidates, ranking, costUsd: Math.round(candidates.reduce((s, c) => s + c.costUsd, 0) * 1e6) / 1e6 };
+  }
+
+  private abFile(): string {
+    return path.join(this.store.layout.history.dir, 'ab.jsonl');
+  }
+
+  /** The Author's pairwise choice between two suggestions (Section 6.5); feeds the eval record. */
+  async recordAb(input: { left: string; right: string; choice: 'left' | 'right' | 'tie'; note?: string; task?: string; criticPreferred?: 'left' | 'right' | null }): Promise<AbRecord> {
+    const record: AbRecord = {
+      ts: isoNow(),
+      task: input.task ?? 'write',
+      left: input.left,
+      right: input.right,
+      choice: input.choice,
+      ...(input.note ? { note: input.note } : {}),
+      critic_preferred: input.criticPreferred ?? null,
+      agreed: input.criticPreferred ? input.choice === input.criticPreferred : null,
+    };
+    await appendLine(this.abFile(), JSON.stringify(record));
+    return record;
+  }
+
+  async listAb(): Promise<AbRecord[]> {
+    const text = await this.store.readText(this.abFile());
+    if (!text) return [];
+    return text
+      .split('\n')
+      .filter((l) => l.trim().length > 0)
+      .map((l) => JSON.parse(l) as AbRecord);
+  }
+
+  // -------------------------------------------------------------------------
+  // Chat with the narrator outside the story (Section 5.1)
+  // -------------------------------------------------------------------------
+
+  /**
+   * One turn of conversation with the narrator persona: short, honest, outside the story. A
+   * trailing `>> action:` line names a command the Author asked for; the client runs it after
+   * showing the reply (or after a confirmation when it changes something).
+   */
+  async chat(input: { message: string; history?: ChatMessage[]; uiLanguage?: Language; onDelta?: (text: string) => void }): Promise<{ reply: string; action?: CommandMatch; run: TaskRun }> {
+    const ui = input.uiLanguage ?? this.language;
+    const chapters = await this.store.listChapters();
+    const state = await this.chronicle.readState();
+    const log = await this.chronicle.readLog();
+    const lastLog = log.trim().split(/\n(?=## )/).pop()?.trim() ?? '';
+    const last = chapters[chapters.length - 1];
+    const storyState = [
+      `Title: ${this.store.config.title} (${LANGUAGE_NAMES[this.language]})`,
+      `Chapters: ${chapters.length}${last ? `, last «${last.front.title}» (${last.front.words ?? 0} words, ${last.front.status})` : ''}`,
+      `In-story time: ${state.in_story_time || 'not set'}; chronicle at chapter ${state.last_chapter}`,
+      `Open threads: ${state.open_threads.filter((t) => t.status === 'open').map((t) => t.text).join(' | ') || 'none'}`,
+      renderSettingsLine(this.narrator, this.store.config, ui),
+      lastLog.startsWith('## ') ? `Last chronicle entry:\n${lastLog.slice(0, 1200)}` : '',
+    ]
+      .filter((l) => l.length > 0)
+      .join('\n');
+    const history = (input.history ?? [])
+      .slice(-12)
+      .map((m) => `${m.role === 'user' ? 'Author' : this.narrator.displayName.en}: ${m.content}`)
+      .join('\n');
+    const run = await this.runTask(
+      {
+        task: 'chat',
+        vars: {
+          persona: this.narrator.persona,
+          commands: renderCommands(this.narrator.commands),
+          story_state: storyState,
+          history: history || '(none)',
+          message: input.message,
+          ui_language_name: LANGUAGE_NAMES[ui],
+          address: this.narrator.address[ui],
+        },
+      },
+      { maxTokens: 800, ...(input.onDelta ? { onDelta: input.onDelta } : {}) },
+    );
+    const parsed = parseChatAction(run.text, this.narrator.commands);
+    return { reply: parsed.reply, ...(parsed.action ? { action: parsed.action } : {}), run };
+  }
+
   // -------------------------------------------------------------------------
   // Planning, chronicle, summaries
   // -------------------------------------------------------------------------
@@ -988,6 +1131,7 @@ export class Harness {
           completed: [],
           cost_usd: 0,
           outline_approved: !def.plan_approval,
+          approved_decisions: [],
           log: [],
         },
         `run started: ${target} chapter(s), preset ${this.store.config.preset}`,
@@ -995,6 +1139,10 @@ export class Harness {
     }
     if (options.approveOutline) {
       state = await this.saveRun({ ...state, outline_approved: true, stage: state.stage === 'outline' ? 'plan' : state.stage }, 'outline approved by the Author');
+    }
+    if (options.approveDecision && state.pending_decision) {
+      const { pending_decision, ...rest } = state;
+      state = await this.saveRun({ ...rest, approved_decisions: [...state.approved_decisions, pending_decision.chapter] }, `irreversible choices of chapter ${pending_decision.chapter} approved by the Author: ${pending_decision.items.map((i) => `${i.who}: ${i.what}`).join('; ')}`);
     }
     progress(state, `run ${state.id}: chapter ${state.next_chapter}, stage ${state.stage}`);
 
@@ -1015,10 +1163,20 @@ export class Harness {
           return state;
         }
         if (state.stage === 'plan') {
-          const existing = await this.readBeatSheet(n);
-          if (!existing) {
-            const { sheet, roll, run } = await this.planChapter(n);
-            state = await this.saveRun({ ...state, cost_usd: state.cost_usd + run.result.costUsd }, `chapter ${n} planned: ${sheet.title}${roll ? ` (d20 ${roll.result})` : ''}`);
+          let sheet = await this.readBeatSheet(n);
+          if (!sheet) {
+            const planned = await this.planChapter(n);
+            sheet = planned.sheet;
+            state = await this.saveRun({ ...state, cost_usd: state.cost_usd + planned.run.result.costUsd }, `chapter ${n} planned: ${sheet.title}${planned.roll ? ` (d20 ${planned.roll.result})` : ''}`);
+          }
+          // The ASK gate (Section 5.9): an irreversible choice waits for the Author, whatever the harshness.
+          if (sheet.irreversible.length > 0 && !state.approved_decisions.includes(n)) {
+            state = await this.saveRun(
+              { ...state, status: 'awaiting_decision', pending_decision: { chapter: n, items: sheet.irreversible } },
+              `chapter ${n} plans irreversible choices (${sheet.irreversible.map((i) => `${i.who}: ${i.what}`).join('; ')}); waiting for the Author`,
+            );
+            progress(state, `chapter ${n}: irreversible choices need the Author's decision (resume with approveDecision, or edit plan/beats/${String(n).padStart(2, '0')}.json)`);
+            return state;
           }
           state = await this.saveRun({ ...state, stage: 'write' });
           progress(state, `chapter ${n}: planned`);
@@ -1086,6 +1244,8 @@ export interface RunBookOptions {
   resume?: string;
   /** Pass the outline gate for long and very long stories. */
   approveOutline?: boolean;
+  /** Approve the irreversible choices a paused run is waiting on (status `awaiting_decision`). */
+  approveDecision?: boolean;
   readerReport?: boolean;
   onProgress?: (state: RunState, message: string) => void;
   onDelta?: (text: string) => void;

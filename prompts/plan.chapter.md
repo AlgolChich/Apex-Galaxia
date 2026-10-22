@@ -22,7 +22,8 @@ Planning rules:
 - The chapter ends on an image (`ending_image`). {{cliffhanger_instruction}}
 - The rating and the hard limits apply to what you plan, not only to how it is written.
 - Harshness decides who may die and whether consequences are reversible. A lead's death at harshness 3 or below is never your choice: mark it as a question in `goal` instead of planning it.
+- Every irreversible choice you do plan, at any harshness (a death, a permanent maiming, a betrayal revealed, a bridge burned), goes into `irreversible` as `{who, what}`; the Author is asked before the chapter is written. Leave it empty when the chapter takes nothing back.
 
 {{chapter_plan_hint}}
 
-Return only JSON that matches the schema: `chapter`, `title`, `goal` (what this chapter must achieve for the story), `beats` (5–9 strings, each a scene beat naming who wants what and what stands in the way), `breather_scene`, `ending_image`, `world_tick` (strings), `guns` (ids of guns planted or fired in this chapter, with `planted:` or `fires:` prefix), `cliffhanger` (optional, one sentence).
+Return only JSON that matches the schema: `chapter`, `title`, `goal` (what this chapter must achieve for the story), `beats` (5–9 strings, each a scene beat naming who wants what and what stands in the way), `breather_scene`, `ending_image`, `world_tick` (strings), `guns` (ids of guns planted or fired in this chapter, with `planted:` or `fires:` prefix), `cliffhanger` (optional, one sentence), `irreversible` (list of `{who, what}`, empty when none).

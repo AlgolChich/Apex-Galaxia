@@ -49,6 +49,27 @@
     },
     "cliffhanger": {
       "type": "string"
+    },
+    "irreversible": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "who": {
+            "type": "string",
+            "minLength": 1
+          },
+          "what": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "who",
+          "what"
+        ]
+      }
     }
   },
   "required": [

@@ -32,6 +32,8 @@ activation still scans the chapter.
 | `voice.card` | plan | markdown | the voice card from a sample |
 | `brainstorm` | prose | markdown | ideas that read the Bible |
 | `research.dossier` | plan | markdown | the research brief for headless mode |
+| `chat` | plan | markdown | the narrator outside the story: a short reply and an optional `>> action:` line |
+| `eval.planner` | critic | json:planner-judgement | the planner-eval judge: harshness fit, storyteller fit, roll obedience |
 | `contract.prose`, `contract.rewrite` | — | — | output contracts (system layer 4) |
 
 ## System prompt layer order (Section 10.2)

@@ -99,6 +99,8 @@ function json(value: unknown): string {
 
 /** Build the responder for a language that is detected per call from the system prompt. */
 export function scriptedResponder(): Responder {
+  // Repeated writes of the same prompt rotate through the pool, so candidates differ.
+  let writes = 0;
   return (options: GenerateOptions): string => {
     const lang = languageOf(options);
     const task = options.task;
@@ -106,11 +108,25 @@ export function scriptedResponder(): Responder {
     const chapter = chapterNumberOf(options);
 
     if (task === 'write.chapter') {
+      writes += 1;
       const heading = headingOf(options) ?? (lang === 'ru' ? `Глава ${chapter}. Фары` : `Chapter ${chapter}. Eleven`);
-      return `${heading}\n\n${prose(lang, 6)}\n[[END]]`;
+      return `${heading}\n\n${prose(lang, 6, writes - 1)}\n[[END]]`;
     }
     if (task === 'write.continue' || task === 'write.guided' || task === 'write.scene') {
-      return `${prose(lang, 3, task === 'write.guided' ? 1 : task === 'write.scene' ? 2 : 0)}\n[[END]]`;
+      writes += 1;
+      return `${prose(lang, 3, (task === 'write.guided' ? 1 : task === 'write.scene' ? 2 : 0) + writes - 1)}\n[[END]]`;
+    }
+    if (task === 'chat') {
+      const message = (/<message>\n?([\s\S]*?)\n?<\/message>/.exec(user(options))?.[1] ?? '').toLowerCase();
+      const ru = /Answer in Russian/.test(user(options));
+      if (/дальше|next/.test(message)) return ru ? 'Иду за следующей главой, Автор. Держитесь за перила.\n>> action: next' : 'Off to the next chapter, Author. Hold the rail.\n>> action: next';
+      if (/летопис|chronicle|handover/.test(message)) return ru ? 'Собираю летопись: всё, что случилось, и отдельно то, чего читателю знать рано.\n>> action: chronicle' : 'Gathering the chronicle: what happened, and apart from it what the reader must not know yet.\n>> action: chronicle';
+      return ru ? 'Слушаю, Автор. Идея держится, если дать Грише промолчать подольше.' : 'Listening, Author. The idea holds if we let the deckhand keep quiet a little longer.';
+    }
+    if (schema === 'planner-judgement') {
+      const harshness = Number(/harshness (\d)/.exec(user(options))?.[1] ?? 3);
+      const rolled = /The d20 rolled (\d+)/.test(user(options));
+      return json({ harshness_fit: harshness >= 5 ? 4 : 5, storyteller_fit: 4, roll_obedience: rolled ? 4 : null, irreversible_ok: true, notes: lang === 'ru' ? 'Скриптованная оценка: не вердикт.' : 'Scripted judgement: not a verdict.' });
     }
     if (task === 'revise' || task.startsWith('rewrite.') || task === 'weave') {
       const passage = /<passage[^>]*>\n?([\s\S]*?)\n?<\/passage>/.exec(user(options))?.[1] ?? /<paragraph[^>]*>\n?([\s\S]*?)\n?<\/paragraph>/.exec(user(options))?.[1];

@@ -1,7 +1,14 @@
 import { McpConnection, payload, resultText, type CallOptions } from './mcp.js';
 import type { Transport } from './transport.js';
 import type {
+  AbRecord,
   BeatSheet,
+  CandidatesResult,
+  ChatResult,
+  ChatTurn,
+  ImportPreview,
+  ImportResult,
+  PlannerEvalResults,
   BibleEntryFull,
   BibleEntrySummary,
   ChapterFront,
@@ -264,8 +271,41 @@ export class ApexClient {
     return this.call('plan_save', { ...input });
   }
 
-  runStart(options: { chapters?: number; resume?: string; approve_outline?: boolean; reader_report?: boolean } = {}): Promise<{ id: string; state: RunState }> {
+  runStart(options: { chapters?: number; resume?: string; approve_outline?: boolean; approve_decision?: boolean; reader_report?: boolean } = {}): Promise<{ id: string; state: RunState }> {
     return this.call('run_start', { ...options });
+  }
+
+  // ---- The narrator outside the story, candidates, A/B, import, evals ------------------
+  narratorChat(message: string, options: { history?: ChatTurn[]; ui_language?: Language } = {}, onDelta?: StreamHandler, callOptions?: CallOptions): Promise<ChatResult> {
+    return this.call('narrator_chat', { message, ...options }, streaming(onDelta, callOptions));
+  }
+
+  writeCandidates(params: { mode?: 'continue' | 'guided' | 'scene' | 'chapter'; count?: number; chapter?: number; instruction?: string; scene_card?: string; target_words?: number; cursor?: number; chapter_number?: number; title?: string; pins?: string[] }, onProgress?: (done: number, total: number) => void, callOptions?: CallOptions): Promise<CandidatesResult> {
+    return this.call('write_candidates', { ...params }, { ...(callOptions ?? {}), onProgress: (e) => onProgress?.(e.progress, e.total ?? 0) });
+  }
+
+  abRecord(input: { left: string; right: string; choice: 'left' | 'right' | 'tie'; note?: string; task?: string; critic_preferred?: 'left' | 'right' | null }): Promise<{ record: AbRecord }> {
+    return this.call('ab_record', { ...input });
+  }
+
+  abList(): Promise<{ records: AbRecord[]; count: number; judged: number; critic_agreement: number | null }> {
+    return this.call('ab_list');
+  }
+
+  projectImport(input: { path: string; text?: string; file?: string; title?: string; language?: Language; status?: 'draft' | 'revised' | 'final'; preview?: boolean }): Promise<ImportPreview | ImportResult> {
+    return this.call('project_import', { ...input });
+  }
+
+  bibleImport(kind: EntryKind, input: { text?: string; file?: string }): Promise<{ entries: Array<{ kind: EntryKind; slug: string; name: string; summary: string; path: string }> }> {
+    return this.call('bible_import', { kind, ...input });
+  }
+
+  evalRun(options: { critic?: boolean; planner?: boolean; golden_dir?: string; variant_dir?: string } = {}): Promise<{ results: unknown; report: string }> {
+    return this.call('eval_run', { ...options });
+  }
+
+  plannerEvals(judge = false): Promise<{ results: PlannerEvalResults; report: string }> {
+    return this.call('eval_run', { planner: true, critic: judge });
   }
 
   runPause(id: string): Promise<{ id: string; status: 'pausing' }> {

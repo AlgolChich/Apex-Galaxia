@@ -161,6 +161,30 @@ describe('autonomous run', () => {
     expect(second.log.some((l) => l.includes('resumed at chapter 2'))).toBe(true);
   });
 
+  it('stops at the ASK gate when a beat sheet plans an irreversible choice and continues after approval', async () => {
+    const { harness, state } = await setup({ preset: 'fast' });
+    await fs.mkdir(harness.store.layout.plan.beats, { recursive: true });
+    await fs.writeFile(
+      path.join(harness.store.layout.plan.beats, '01.json'),
+      JSON.stringify({ chapter: 1, title: 'Старые друзья', goal: 'Скаут возвращается.', beats: ['Скаут идёт.', 'Ангар пуст.', 'Записка сгорает.'], breather_scene: 'Фасоль.', ending_image: 'Дым.', world_tick: [], guns: [], irreversible: [{ who: 'Медик', what: 'гибнет под обломками ангара' }] }),
+    );
+    const first = await harness.runBook({ chapters: 2, readerReport: false });
+    expect(first.status).toBe('awaiting_decision');
+    expect(first.pending_decision).toEqual({ chapter: 1, items: [{ who: 'Медик', what: 'гибнет под обломками ангара' }] });
+    expect(first.completed).toEqual([]);
+    expect(state.writes).toBe(0);
+    expect((await harness.store.listChapters())).toHaveLength(0);
+    const resumedWithoutApproval = await harness.runBook({ resume: first.id, readerReport: false });
+    expect(resumedWithoutApproval.status).toBe('awaiting_decision');
+    expect(state.writes).toBe(0);
+    const second = await harness.runBook({ resume: first.id, approveDecision: true, readerReport: false });
+    expect(second.status).toBe('completed');
+    expect(second.approved_decisions).toEqual([1]);
+    expect(second.pending_decision).toBeUndefined();
+    expect(second.completed).toEqual([1, 2]);
+    expect(second.log.some((l) => l.includes('approved by the Author'))).toBe(true);
+  });
+
   it('stops at the outline gate for long stories and continues after approval', async () => {
     const { harness } = await setup({ preset: 'fast', length: 'long' });
     const gate = await harness.runBook({ chapters: 1, readerReport: false });

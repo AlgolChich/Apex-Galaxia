@@ -20,7 +20,7 @@ test.describe('desktop smoke (browser, scripted model)', () => {
     await pathInput.press('Enter');
 
     // The project is open: the tree shows its sections and the status bar the scripted model.
-    const tree = page.getByRole('navigation').first();
+    const tree = page.getByRole('navigation', { name: /Project tree|Дерево проекта/ });
     await expect(tree).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/scripted|скриптован/i).first()).toBeVisible();
 

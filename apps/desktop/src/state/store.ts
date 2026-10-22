@@ -159,6 +159,11 @@ export const useStore = create<AppState>((set, get) => ({
       const model = await client.modelStatus();
       const status = await client.transport.status().catch(() => undefined);
       set({ connection: { status: 'ready', model, ...(status ? { keySource: status.keySource } : {}) } });
+      // First run: no interface language saved for this user and no project ever opened here.
+      if (!get().project.root && get().ui.recent.length === 0 && get().ui.wizard === 'none') {
+        const user = await client.userConfigGet().catch(() => undefined);
+        if (user && !user.config.ui_language) set((s) => ({ ui: { ...s.ui, wizard: 'first-run' } }));
+      }
       client.onReset(() => {
         set((s) => ({ connection: { ...s.connection, status: 'connecting' } }));
         void get().connect().then(() => {

@@ -129,12 +129,16 @@ export class ApexMcpServer {
     if (!this.root) {
       throw new Error('No project is open. Call project_open with the project folder first.');
     }
+    // Another tool may switch projects (this.harness = undefined) while we await, so never
+    // re-read the field after an await: hold the instance in a local.
     if (!this.harness || this.harness.store.layout.root !== this.root) {
-      this.harness = await Harness.open(this.root, { adapter: await this.getAdapter(), resources: await this.getResources() });
-    } else {
-      await this.harness.refresh();
+      const harness = await Harness.open(this.root, { adapter: await this.getAdapter(), resources: await this.getResources() });
+      this.harness = harness;
+      return harness;
     }
-    return this.harness;
+    const harness = this.harness;
+    await harness.refresh();
+    return harness;
   }
 
   private async getStore(): Promise<ProjectStore> {

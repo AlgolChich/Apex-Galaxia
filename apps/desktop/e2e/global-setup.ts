@@ -15,6 +15,8 @@ export default function globalSetup(): void {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
   fs.rmSync(E2E_ROOT, { recursive: true, force: true });
   fs.mkdirSync(E2E_HOME, { recursive: true });
+  // A saved interface language means this is not a first run, so the welcome screen shows.
+  fs.writeFileSync(path.join(E2E_HOME, 'config.yaml'), 'ui_language: en\n');
   execFileSync(
     process.execPath,
     [path.join(repoRoot, 'packages', 'cli', 'dist', 'bin.js'), 'new', E2E_PROJECT, '--title', 'Штрек', '--lang', 'ru', '--idea', 'Ночью в посёлок приезжает грузовик.', '--length', 'short', '--storyteller', 'cassandra'],

@@ -1,0 +1,104 @@
+/* The import dialog: a source (pasted text or a file), the target, the preview, the result. */
+.import__text {
+  min-height: 10em;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.import__prose {
+  min-height: 10em;
+  font-family: var(--font-prose);
+  line-height: 1.5;
+}
+
+.import__file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.import__file .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import__note {
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 0.9em;
+  line-height: 1.45;
+}
+
+.import__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.import__preview h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.import__chapters,
+.import__names {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 16rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.import__chapters li,
+.import__names li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.35rem 0.7rem;
+  border-top: 1px solid var(--border);
+}
+
+.import__chapters li:first-child,
+.import__names li:first-child {
+  border-top: 0;
+}
+
+.import__num {
+  min-width: 2.2em;
+  text-align: right;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.import__result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.import__result .mono {
+  overflow-wrap: anywhere;
+}
+
+.import__removed {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--fg-muted);
+}
+
+.import__removed li {
+  overflow-wrap: anywhere;
+}

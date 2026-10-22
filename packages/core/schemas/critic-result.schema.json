@@ -1,0 +1,118 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/critic-result.schema.json",
+  "title": "critic-result",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "scores": {
+      "type": "object",
+      "properties": {
+        "voice": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "subtext": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "rhythm": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "cliche": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "ai_tell": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "continuity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "language": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "required": [
+        "voice",
+        "subtext",
+        "rhythm",
+        "cliche",
+        "ai_tell",
+        "continuity",
+        "language"
+      ]
+    },
+    "quotes": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "issue": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "default": "other",
+            "type": "string",
+            "enum": [
+              "dialogue",
+              "exposition",
+              "cliche",
+              "rhythm",
+              "labeling",
+              "pacing",
+              "continuity",
+              "voice",
+              "sensory",
+              "other"
+            ]
+          },
+          "severity": {
+            "default": "medium",
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "required": [
+          "quote",
+          "issue"
+        ]
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "revise",
+        "reject"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "scores",
+    "verdict"
+  ]
+}

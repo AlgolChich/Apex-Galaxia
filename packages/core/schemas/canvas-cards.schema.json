@@ -1,0 +1,56 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/canvas-cards.schema.json",
+  "title": "canvas-cards",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "cards": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "idea",
+              "scene",
+              "arc",
+              "twist",
+              "branch",
+              "question"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "default": "",
+            "type": "string"
+          },
+          "lane": {
+            "type": "string"
+          },
+          "links_to": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "title"
+        ]
+      }
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cards"
+  ]
+}

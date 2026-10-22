@@ -1,0 +1,11 @@
+dist/
+node_modules/
+coverage/
+pnpm-lock.yaml
+CHANGELOG.md
+docs/
+narrators/
+prompts/
+style/
+evals/
+samples/

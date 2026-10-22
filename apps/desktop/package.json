@@ -1,0 +1,51 @@
+{
+  "name": "@apex-galaxia/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Apex Galaxia desktop app: Tauri 2 shell, React frontend, the MCP server as a Node sidecar.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:bridge": "node dev/bridge.mjs",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "preview": "vite preview --port 1420 --strictPort",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "tauri": "tauri",
+    "sidecar:bundle": "node sidecar/bundle.mjs && node sidecar/check.mjs",
+    "sidecar:check": "node sidecar/check.mjs",
+    "sidecar:node": "node sidecar/fetch-node.mjs",
+    "sidecar:prepare": "pnpm sidecar:bundle && pnpm sidecar:node",
+    "tauri:dev": "pnpm sidecar:prepare && tauri dev",
+    "tauri:build": "pnpm sidecar:prepare && tauri build"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.3",
+    "@tauri-apps/plugin-opener": "^2.7.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@tauri-apps/cli": "^2.12.4",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}

@@ -1,0 +1,252 @@
+/* The right panel: tabs on top, one scrolling tab body. */
+
+/* The slot App renders the panel into is a grid item; without min-height: 0 it grows with
+   tall content instead of letting the tab body scroll (a one-line candidate for app.css). */
+.app__panel {
+  min-height: 0;
+}
+
+.panel {
+  width: 22rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  min-height: 0;
+}
+
+.panel__tabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.panel__tab {
+  flex: 1 0 auto;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.panel__tab[aria-selected='true'] {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.panel__tab:focus-visible {
+  box-shadow: inset var(--focus-ring);
+  border-radius: 0;
+}
+
+.panel__close {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  padding: 0 0.6rem;
+  cursor: pointer;
+  color: var(--fg-faint);
+}
+
+.panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.panel__h {
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.panel__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.panel__item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-elev);
+}
+
+.panel__item--present {
+  border-left: 3px solid var(--accent);
+}
+
+.panel__item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel__item-body {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9em;
+}
+
+.panel__log p {
+  margin: 0 0 0.6em;
+  font-size: 0.92em;
+}
+
+.panel__hidden {
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+  background: color-mix(in srgb, var(--warning) 8%, var(--bg-elev));
+}
+
+.panel__hidden pre,
+.panel__pre {
+  white-space: pre-wrap;
+  font-family: var(--font-ui);
+  font-size: 0.88em;
+  margin: 0;
+}
+
+.panel__hit {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.2rem 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+}
+
+.panel__hit:hover {
+  background: var(--bg-hover);
+}
+
+.panel__hit-excerpt {
+  color: var(--fg-muted);
+  font-family: var(--font-prose);
+}
+
+.panel__scores {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.panel__scores td,
+.panel__scores th {
+  padding: 0.2rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.panel__scores td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.score--low {
+  color: var(--danger);
+}
+
+.score--mid {
+  color: var(--warning);
+}
+
+.score--high {
+  color: var(--success);
+}
+
+.panel__quote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.9em;
+}
+
+.panel__quote-text {
+  font-family: var(--font-prose);
+}
+
+.panel__bar {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.panel__bar > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.panel__bar--over > div {
+  background: var(--danger);
+}
+
+.panel__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.panel__table th,
+.panel__table td {
+  text-align: left;
+  padding: 0.2rem 0.3rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.panel__table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.panel__table tr.excluded {
+  color: var(--fg-faint);
+}

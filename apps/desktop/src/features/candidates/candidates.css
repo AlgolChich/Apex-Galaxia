@@ -1,0 +1,100 @@
+/* Candidates: the form, the drafting state, then two or three drafts side by side (stacked on narrow windows). */
+.dlg.cands {
+  width: min(76rem, 100%);
+}
+
+.cands__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cands-count, 2), minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .cands__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cands__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.6rem 0.75rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+
+.cands__card--on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.cands__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cands__choose {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cands__choose input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.cands__text {
+  flex: 1 1 auto;
+  min-height: 6em;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 0.4rem 0.5rem;
+  white-space: pre-wrap;
+  font-size: 1rem;
+  max-width: none;
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+}
+
+.cands__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.cands__busy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+}
+
+.cands__progress {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.cands__progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms;
+}
+
+.cands__keys {
+  color: var(--fg-faint);
+  font-size: 0.8em;
+}

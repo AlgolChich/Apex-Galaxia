@@ -1,0 +1,58 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/bible-research.frontmatter.schema.json",
+  "title": "bible-research.frontmatter",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "topic": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sources": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "default": "other",
+            "type": "string",
+            "enum": [
+              "official",
+              "wiki",
+              "analysis",
+              "fanon",
+              "other"
+            ]
+          },
+          "accessed": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    "canon_point": {
+      "type": "string"
+    },
+    "unconfirmed": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "topic"
+  ],
+  "additionalProperties": {}
+}

@@ -1,0 +1,57 @@
+/* Describe: options form, then the options grouped by sense. */
+.describe__passage {
+  max-height: 8em;
+  overflow: auto;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+}
+
+.describe__avoid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+}
+
+.describe__avoid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9em;
+}
+
+.describe__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.describe__sense {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+}
+
+.describe__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.describe__option-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.describe__option-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}

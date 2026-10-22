@@ -1,0 +1,112 @@
+/*
+ * Design tokens (Section 11.5): typography-led, light and dark, a faint accent reserved for
+ * the narrator's chat panel and empty states. Features use the variables, never raw colors.
+ */
+:root {
+  color-scheme: light;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-prose: 'Literata', 'PT Serif', 'Noto Serif', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  --text-base: 15px;
+  --prose-size: 1.125rem;
+  --prose-leading: 1.65;
+  --prose-measure: 68ch;
+  --prose-measure-wide: 80ch;
+  --tree-width: 16rem;
+  --panel-width: 22rem;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
+
+  --bg: #faf9f6;
+  --bg-elev: #ffffff;
+  --bg-sunken: #f1efe9;
+  --bg-hover: #efede6;
+  --fg: #1d1c1a;
+  --fg-muted: #6b6861;
+  --fg-faint: #9c988f;
+  --border: #e3e0d8;
+  --border-strong: #c9c5bb;
+  --accent: #5a4a9c;
+  --accent-soft: #ece8f7;
+  --accent-fg: #ffffff;
+  --narrator: #7a6bbf;
+  --narrator-soft: #f3f0fb;
+  --success: #2e7d4f;
+  --warning: #a86b00;
+  --danger: #b3261e;
+  --info: #2f5f9e;
+  --lint-error: rgb(179 38 30 / 0.55);
+  --lint-warning: rgb(168 107 0 / 0.55);
+  --lint-info: rgb(47 95 158 / 0.45);
+  --selection: rgb(90 74 156 / 0.18);
+  --diff-add: #e6f4ea;
+  --diff-add-fg: #1e5a34;
+  --diff-remove: #fbe9e7;
+  --diff-remove-fg: #8a1c15;
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #16171a;
+  --bg-elev: #1e2024;
+  --bg-sunken: #121315;
+  --bg-hover: #25282d;
+  --fg: #e8e6e1;
+  --fg-muted: #a09d96;
+  --fg-faint: #6f6d67;
+  --border: #2c2f35;
+  --border-strong: #41454d;
+  --accent: #a394e6;
+  --accent-soft: #2a2740;
+  --accent-fg: #15131f;
+  --narrator: #b7abee;
+  --narrator-soft: #23203a;
+  --success: #6cc08b;
+  --warning: #e0a94a;
+  --danger: #ef7a72;
+  --info: #7fa8e0;
+  --lint-error: rgb(239 122 114 / 0.6);
+  --lint-warning: rgb(224 169 74 / 0.6);
+  --lint-info: rgb(127 168 224 / 0.5);
+  --selection: rgb(163 148 230 / 0.25);
+  --diff-add: #1b2e22;
+  --diff-add-fg: #9fd9b4;
+  --diff-remove: #3a1f1d;
+  --diff-remove-fg: #f0a8a2;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 20px rgb(0 0 0 / 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    color-scheme: dark;
+    --bg: #16171a;
+    --bg-elev: #1e2024;
+    --bg-sunken: #121315;
+    --bg-hover: #25282d;
+    --fg: #e8e6e1;
+    --fg-muted: #a09d96;
+    --fg-faint: #6f6d67;
+    --border: #2c2f35;
+    --border-strong: #41454d;
+    --accent: #a394e6;
+    --accent-soft: #2a2740;
+    --accent-fg: #15131f;
+    --narrator: #b7abee;
+    --narrator-soft: #23203a;
+    --success: #6cc08b;
+    --warning: #e0a94a;
+    --danger: #ef7a72;
+    --info: #7fa8e0;
+    --lint-error: rgb(239 122 114 / 0.6);
+    --lint-warning: rgb(224 169 74 / 0.6);
+    --lint-info: rgb(127 168 224 / 0.5);
+    --selection: rgb(163 148 230 / 0.25);
+    --diff-add: #1b2e22;
+    --diff-add-fg: #9fd9b4;
+    --diff-remove: #3a1f1d;
+    --diff-remove-fg: #f0a8a2;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 20px rgb(0 0 0 / 0.5);
+  }
+}

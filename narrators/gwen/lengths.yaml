@@ -1,0 +1,29 @@
+# A page is about 1,800 characters or 250–300 words. Anything longer than very long becomes
+# a sequel story. One chapter per run, about 1,000–2,500 words.
+chapter_words: { min: 1000, max: 2500 }
+lengths:
+  - id: short
+    name: { en: Short, ru: Малая }
+    pages: [1, 3]
+    words: [300, 900]
+    chapters: [1, 1]
+    plan_approval: false
+  - id: medium
+    default: true
+    name: { en: Medium, ru: Средняя }
+    pages: [4, 8]
+    words: [1000, 2400]
+    chapters: [1, 2]
+    plan_approval: false
+  - id: long
+    name: { en: Long, ru: Длинная }
+    pages: [9, 15]
+    words: [2300, 4500]
+    chapters: [2, 4]
+    plan_approval: true
+  - id: very_long
+    name: { en: Very long, ru: Крайне длинная }
+    pages: [16, 30]
+    words: [4000, 9000]
+    chapters: [4, 8]
+    plan_approval: true

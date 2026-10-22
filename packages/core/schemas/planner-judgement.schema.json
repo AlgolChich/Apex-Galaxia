@@ -1,0 +1,42 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/planner-judgement.schema.json",
+  "title": "planner-judgement",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "harshness_fit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "storyteller_fit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "roll_obedience": {
+      "default": null,
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "irreversible_ok": {
+      "default": true,
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "harshness_fit",
+    "storyteller_fit"
+  ]
+}

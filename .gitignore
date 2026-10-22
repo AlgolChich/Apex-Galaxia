@@ -1,0 +1,46 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Secrets: API keys never enter the repository
+.env
+.env.*
+!.env.example
+
+# The Author's private stories and fixtures (Section 12.3)
+private/
+fixtures/private/
+evals/private/
+
+# /improve proposals are reviewed, then merged or discarded by the Author
+evals/proposals/
+
+# Generated manuscripts and local story projects (the /new-story default folder included)
+projects/
+stories/
+*.local.md
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Tauri (Phase 3)
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# Replay cassettes recorded against the real API are committed on purpose;
+# scratch recordings are not.
+packages/adapters/cassettes/scratch/
+
+# Desktop app build output and local test artifacts
+apps/desktop/dist/
+apps/desktop/sidecar/dist/
+apps/desktop/src-tauri/binaries/
+apps/desktop/src-tauri/resources/
+apps/desktop/test-results/
+apps/desktop/playwright-report/

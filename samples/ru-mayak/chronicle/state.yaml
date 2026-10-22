@@ -1,0 +1,65 @@
+format_version: 1
+in_story_time: 4 октября, утро
+last_chapter: 1
+locations:
+  fyodor: маяк, жилой дом
+  gost: маяк, койка Фёдора
+condition:
+  fyodor:
+    wounds: []
+    fatigue: третья ночь без сна
+    mood: собранный
+  gost:
+    wounds:
+      - переохлаждение
+      - правая рука обморожена до запястья
+    fatigue: измотан
+    mood: спокойный
+inventory:
+  fyodor:
+    - тетрадь учёта
+    - карандаш
+    - керосин на 12 ночей
+    - хлеб на 4 дня
+  gost:
+    - пальто без пуговиц
+    - одна кожаная перчатка
+    - паспорт на чужое имя
+knowledge:
+  - id: name
+    fact: Гость знает отчество Фёдора, которого тот не называл
+    known_by:
+      - fyodor
+      - gost
+    since_chapter: 1
+relations:
+  - between: [fyodor, gost]
+    trust: настороженность
+    promises: []
+    debts:
+      - Фёдор вытащил гостя с камней
+    grudges: []
+open_threads:
+  - id: boat
+    text: Почему катер не приходит третий день?
+    since_chapter: 1
+    status: open
+  - id: guest-name
+    text: Кто гость и откуда он знает отчество Фёдора?
+    since_chapter: 1
+    status: open
+planted_guns:
+  - id: ledger
+    what: тетрадь учёта, в которой всё сходится
+    planted_in: 1
+    payoff: тетрадь выдаст, что Фёдор сам отменял катер
+  - id: glove
+    what: одна перчатка
+    planted_in: 1
+    payoff: вторая перчатка найдётся в бухте за южным мысом
+pending_consequences:
+  - id: bread
+    text: Хлеб кончится через четыре дня
+    due: 8 октября
+    done: false
+rolls: []

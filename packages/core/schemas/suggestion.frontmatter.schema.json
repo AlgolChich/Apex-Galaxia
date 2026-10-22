@@ -1,0 +1,58 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/suggestion.frontmatter.schema.json",
+  "title": "suggestion.frontmatter",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "task": {
+      "type": "string"
+    },
+    "created": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "status": {
+      "default": "pending",
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "discarded"
+      ]
+    },
+    "chapter": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "title": {
+      "type": "string"
+    },
+    "anchor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "cost_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "call_id": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "task",
+    "created",
+    "model"
+  ]
+}

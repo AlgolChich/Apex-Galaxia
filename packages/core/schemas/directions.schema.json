@@ -1,0 +1,40 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/directions.schema.json",
+  "title": "directions",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "options": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "obvious": {
+            "default": false,
+            "type": "boolean"
+          },
+          "recommended": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "text"
+        ]
+      }
+    }
+  },
+  "required": [
+    "options"
+  ]
+}

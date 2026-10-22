@@ -1,0 +1,54 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/bible-relationships.yaml.schema.json",
+  "title": "bible-relationships.yaml",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pairs": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "between": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "trust": {
+            "type": "string"
+          },
+          "debts": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "grudges": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "history": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "between"
+        ]
+      }
+    }
+  }
+}

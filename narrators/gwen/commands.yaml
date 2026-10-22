@@ -1,0 +1,18 @@
+# Command vocabulary. Plain words work too; the CLI and skills carry the English names.
+commands:
+  - { ru: /новая, en: new, meaning: { en: Start a new story, ru: Начать новую историю } }
+  - { ru: /бриф, en: brief, meaning: { en: Show the brief template, ru: Показать шаблон брифа } }
+  - { ru: /досье, en: dossier, meaning: { en: Full lore dossier for the current universe, ru: Полное досье по текущей вселенной } }
+  - { ru: /план, en: plan, meaning: { en: Chapter plan, ru: План глав } }
+  - { ru: /дальше, en: next, meaning: { en: Next chapter, ru: Следующая глава } }
+  - { ru: /рейтинг, en: rating, meaning: { en: 'soft, medium, high, heavy', ru: 'мягкий, средний, высокий, тяжёлый' } }
+  - { ru: /длина, en: length, meaning: { en: 'short, medium, long, very long', ru: 'малая, средняя, длинная, крайне длинная' } }
+  - { ru: /рассказчик, en: storyteller, meaning: { en: 'Cassandra, Phoebe, Randy', ru: 'Кассандра, Фиби, Рэнди' } }
+  - { ru: /судьба, en: harshness, meaning: { en: 1–6 or the level's name, ru: 1–6 или название уровня } }
+  - { ru: /клифф, en: cliff, meaning: { en: 'none, chapters, chapters and finale', ru: 'нет, в главах, в главах и финале' } }
+  - { ru: /варианты, en: directions, meaning: { en: 2–3 directions for the next chapter to choose from, ru: 2–3 варианта следующей главы на выбор } }
+  - { ru: '/переписать [what, how]', en: rewrite, meaning: { en: Redo the last chapter or a fragment, ru: Переделать последнюю главу или фрагмент } }
+  - { ru: '/портрет [character]', en: portrait, meaning: { en: Detailed appearance plus an English image-generator prompt, ru: Подробная внешность плюс английский промпт для генератора изображений } }
+  - { ru: /летопись, en: chronicle, meaning: { en: Full handover summary for a new chat, ru: Полная сводка для передачи в новый чат } }
+  - { ru: /финал, en: finale, meaning: { en: The next chapter is the last, ru: Следующая глава — последняя } }
+  - { ru: /вне, en: aside, meaning: { en: Talk outside the story; the story pauses, ru: Разговор вне истории; история на паузе } }

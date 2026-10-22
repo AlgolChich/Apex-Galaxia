@@ -1,0 +1,68 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/bible-entry.frontmatter.schema.json",
+  "title": "bible-entry.frontmatter",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "aliases": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "ru": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "en": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "kind": {
+      "default": "original",
+      "type": "string",
+      "enum": [
+        "canon",
+        "original"
+      ]
+    },
+    "always_on": {
+      "default": false,
+      "type": "boolean"
+    },
+    "pinned": {
+      "default": false,
+      "type": "boolean"
+    },
+    "age": {
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "first_appears": {
+      "type": "string"
+    },
+    "tags": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": {}
+}

@@ -1,0 +1,57 @@
+# Fate harshness says what may happen; the rating says how it is shown. Independent settings.
+levels:
+  - level: 1
+    name: { en: Peaceful, ru: Мирная }
+    allowed:
+      en: No direct threats; only everyday and inner difficulties; nobody is seriously hurt.
+      ru: Прямых угроз нет; только бытовые и внутренние трудности; никто серьёзно не пострадает.
+    planner_rules: |
+      Harshness 1 (Peaceful): no direct threats. Only everyday and inner difficulties. Nobody is
+      seriously hurt. Consequences are reversible. The leads have plot armor and so does everyone
+      else; stakes are emotional, social and practical.
+  - level: 2
+    name: { en: Community builder, ru: Строитель общины }
+    allowed:
+      en: Danger exists but is softened; wounds are light; the heroes cope.
+      ru: Опасность есть, но смягчена; раны лёгкие; герои справляются.
+    planner_rules: |
+      Harshness 2 (Community builder): danger exists but is softened. Wounds are light and heal.
+      The heroes cope, sometimes at a cost in time, money or trust. Nobody important dies.
+  - level: 3
+    name: { en: Adventure story, ru: Приключенческая история }
+    default: true
+    allowed:
+      en: The world is dangerous but there is room to grow; wounds and losses are real; leads survive unless the Author decides otherwise.
+      ru: Мир опасен, но есть где расти; раны и потери настоящие; главные герои выживают, если Автор не решит иначе.
+    planner_rules: |
+      Harshness 3 (Adventure story): the world is dangerous but there is room to grow. Wounds and
+      losses are real and leave marks in the chronicle. Secondary characters can be hurt badly.
+      The leads survive unless the Author decides otherwise; a lead's death is an ASK gate, never
+      your own choice.
+  - level: 4
+    name: { en: Strive to survive, ru: Борьба за выживание }
+    allowed:
+      en: Triumph and tragedy both; secondary characters may die; leads may suffer irreversible consequences.
+      ru: И триумф, и трагедия; второстепенные персонажи могут погибнуть; у главных возможны необратимые последствия.
+    planner_rules: |
+      Harshness 4 (Strive to survive): triumph and tragedy both. Secondary characters may die.
+      Leads may suffer irreversible consequences: a lost hand, a broken trust, a ruined home.
+      Victories are paid for.
+  - level: 5
+    name: { en: Blood and dust, ru: Кровь и пыль }
+    allowed:
+      en: Even with right decisions someone dies; threats must be foreseen in advance.
+      ru: Даже при верных решениях кто-то гибнет; угрозы нужно предвидеть заранее.
+    planner_rules: |
+      Harshness 5 (Blood and dust): even with the right decisions someone dies. Threats must be
+      planted and foreseeable in advance, never sprung from nowhere. Leads can die when the logic
+      of the story demands it; prepare it, then do it.
+  - level: 6
+    name: { en: Losing is fun, ru: Проигрывать весело }
+    allowed:
+      en: Merciless and unfair; no plot armor for anyone; the story may end with everyone dead.
+      ru: Беспощадно и несправедливо; ни у кого нет сюжетной брони; история может кончиться гибелью всех.
+    planner_rules: |
+      Harshness 6 (Losing is fun): merciless and unfair. No plot armor for anyone. The story may
+      end with everyone dead. Unfair does not mean illogical: every blow still follows from the
+      world and the choices made.

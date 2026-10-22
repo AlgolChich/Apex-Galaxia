@@ -1,0 +1,42 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/chapter.frontmatter.schema.json",
+  "title": "chapter.frontmatter",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "number": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "default": "draft",
+      "type": "string",
+      "enum": [
+        "planned",
+        "draft",
+        "revised",
+        "final"
+      ]
+    },
+    "words": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "pov": {
+      "type": "string"
+    },
+    "in_story_date": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "number",
+    "title"
+  ],
+  "additionalProperties": {}
+}

@@ -1,0 +1,57 @@
+format_version: 1
+in_story_time: last run of the season, dusk, forty minutes from the mainland
+last_chapter: 1
+locations:
+  june: saloon, by the old woman
+  halloran: wheelhouse
+condition:
+  june:
+    wounds:
+      - cut on the left thumb, taped
+    fatigue: end of a long season
+    mood: counting
+  halloran:
+    wounds: []
+    fatigue: tired
+    mood: shut
+inventory:
+  june:
+    - ticket book
+    - ticket punch
+  halloran:
+    - unopened thermos
+knowledge:
+  - id: tag
+    fact: The name on the old woman's luggage tag matches the brass plate for the crewman lost in the strait
+    known_by:
+      - june
+    since_chapter: 1
+relations:
+  - between: [june, halloran]
+    trust: professional
+    promises: []
+    debts: []
+    grudges: []
+open_threads:
+  - id: ticket
+    text: Who sold the old woman a ticket for a crossing that does not exist?
+    since_chapter: 1
+    status: open
+  - id: stop
+    text: Will Halloran stop in the strait?
+    since_chapter: 1
+    status: open
+planted_guns:
+  - id: brass-plate
+    what: the brass plate in the saloon for the crewman lost in the strait
+    planted_in: 1
+    payoff: the old woman is his mother; Halloran knows her
+  - id: thermos
+    what: the thermos Halloran never opens
+    planted_in: 1
+    payoff: it holds what he brings to the strait every year
+pending_consequences:
+  - id: fuel
+    text: A stop in the strait burns a crossing's worth of fuel
+    done: false
+rolls: []

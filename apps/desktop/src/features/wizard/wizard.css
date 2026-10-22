@@ -1,0 +1,233 @@
+/* The wizard: one column of calm width, a heading per step, Back and Next at the bottom. */
+.wizard {
+  height: 100%;
+  overflow: auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.wizard__form {
+  max-width: 44rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.wizard__kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  color: var(--fg-muted);
+  font-size: 0.85em;
+}
+
+.wizard__kicker strong {
+  color: var(--narrator);
+  font-weight: 600;
+}
+
+.wizard__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.wizard__title:focus {
+  outline: none;
+}
+
+.wizard__lead {
+  margin: -0.5rem 0 0;
+  color: var(--fg-muted);
+  max-width: 60ch;
+}
+
+.wizard__step {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.wizard__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.wizard__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.wizard__error {
+  color: var(--danger);
+}
+
+.wizard__note {
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 0.92em;
+}
+
+.wizard__ok {
+  color: var(--success);
+}
+
+/* ---- labelled fields with a one-line explanation ------------------------------------ */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field__label {
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.field__hint {
+  color: var(--fg-muted);
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.field__error {
+  color: var(--danger);
+  font-size: 0.85em;
+}
+
+.field--error .input,
+.field--error .select {
+  border-color: var(--danger);
+}
+
+.field__path {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field__path .mono {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-muted);
+}
+
+/* ---- radio cards -------------------------------------------------------------------- */
+.choice {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.choice__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.choice__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.9rem 0.75rem 2.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elev);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.choice__card:hover {
+  background: var(--bg-hover);
+}
+
+.choice__card--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.choice__card:has(.choice__input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.choice__input {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.9rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.choice__name {
+  font-weight: 600;
+}
+
+.choice__default {
+  font-weight: 400;
+  color: var(--fg-muted);
+  font-size: 0.85em;
+}
+
+.choice__line {
+  color: var(--fg-muted);
+  font-size: 0.85em;
+}
+
+/* ---- summary ------------------------------------------------------------------------ */
+.summary {
+  display: grid;
+  grid-template-columns: minmax(10rem, 14rem) 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.summary dt {
+  color: var(--fg-muted);
+  font-size: 0.9em;
+}
+
+.summary dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.summary dd.summary__default {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.wizard__card {
+  white-space: pre-wrap;
+  font-family: var(--font-prose);
+  line-height: 1.5;
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.wizard__status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.9em;
+}
+
+.wizard__warning {
+  color: var(--warning);
+}

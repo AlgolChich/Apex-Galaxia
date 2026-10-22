@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Apex Galaxia: a dark disc, a thin lighter ring, a small four-point star. No text. -->
+  <circle cx="512" cy="512" r="480" fill="#1b1f2a"/>
+  <circle cx="512" cy="512" r="400" fill="none" stroke="#8d93a8" stroke-width="14"/>
+  <path d="M512 328 L540 484 L696 512 L540 540 L512 696 L484 540 L328 512 L484 484 Z" fill="#e9e6dc"/>
+</svg>

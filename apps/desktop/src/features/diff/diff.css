@@ -1,0 +1,174 @@
+/* Per-paragraph diff for Rewrite, Weave and de-AI (Section 4.4). */
+.diff-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.diff-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.diff-block--same {
+  opacity: 0.7;
+}
+
+.diff-block--rejected .diff-para--after,
+.diff-block--rejected .diff-para--added {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: var(--fg-faint);
+}
+
+.diff-block__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8em;
+  color: var(--fg-muted);
+}
+
+.diff-block__kind {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.75em;
+}
+
+.diff-block__kind--changed {
+  color: var(--warning);
+}
+
+.diff-block__kind--added {
+  color: var(--success);
+}
+
+.diff-block__kind--removed {
+  color: var(--danger);
+}
+
+.diff-cols {
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+}
+
+.diff-cols--side {
+  grid-template-columns: 1fr 1fr;
+}
+
+.diff-para {
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-elev);
+  white-space: pre-wrap;
+  font-family: var(--font-prose);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.diff-para__label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 0.75em;
+  color: var(--fg-faint);
+  margin-bottom: 0.25em;
+}
+
+.diff-para--before {
+  background: color-mix(in srgb, var(--diff-remove) 45%, var(--bg-elev));
+}
+
+.diff-para--after {
+  background: color-mix(in srgb, var(--diff-add) 45%, var(--bg-elev));
+}
+
+.diff-seg--removed {
+  background: var(--diff-remove);
+  color: var(--diff-remove-fg);
+  text-decoration: line-through;
+  border-radius: 2px;
+}
+
+.diff-seg--added {
+  background: var(--diff-add);
+  color: var(--diff-add-fg);
+  border-radius: 2px;
+}
+
+.diff-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.diff-toggle button {
+  border: 0;
+  background: transparent;
+  padding: 0.15em 0.6em;
+  cursor: pointer;
+  color: var(--fg-muted);
+}
+
+.diff-toggle button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.diff-toggle button:focus-visible {
+  box-shadow: inset var(--focus-ring);
+  border-radius: 0;
+}
+
+.diff-lint {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+}
+
+.diff-lint summary {
+  cursor: pointer;
+}
+
+.diff-lint ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.diff-lesson {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-sunken);
+}
+
+.diff-busy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.diff-busy__dot {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: diff-pulse 1s ease-in-out infinite;
+  margin-right: 0.5em;
+}
+
+@keyframes diff-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/improve-proposals.schema.json",
+  "title": "improve-proposals",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "proposals": {
+      "maxItems": 3,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "file",
+          "rationale",
+          "content"
+        ]
+      }
+    }
+  },
+  "required": [
+    "proposals"
+  ]
+}

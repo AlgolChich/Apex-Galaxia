@@ -1,0 +1,248 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/project.yaml.schema.json",
+  "title": "project.yaml",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format_version": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "ru",
+        "en"
+      ]
+    },
+    "narrator": {
+      "default": "gwen",
+      "type": "string",
+      "minLength": 1
+    },
+    "storyteller": {
+      "default": "cassandra",
+      "type": "string",
+      "enum": [
+        "cassandra",
+        "phoebe",
+        "randy"
+      ]
+    },
+    "harshness": {
+      "default": 3,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6
+    },
+    "rating": {
+      "default": "medium",
+      "type": "string",
+      "enum": [
+        "soft",
+        "medium",
+        "high",
+        "heavy"
+      ]
+    },
+    "length": {
+      "default": "medium",
+      "type": "string",
+      "enum": [
+        "short",
+        "medium",
+        "long",
+        "very_long"
+      ]
+    },
+    "pov": {
+      "default": "third",
+      "type": "string",
+      "enum": [
+        "first",
+        "third"
+      ]
+    },
+    "tense": {
+      "default": "past",
+      "type": "string",
+      "enum": [
+        "past",
+        "present"
+      ]
+    },
+    "cliffhangers": {
+      "default": "chapters",
+      "type": "string",
+      "enum": [
+        "none",
+        "chapters",
+        "chapters_and_finale"
+      ]
+    },
+    "ending": {
+      "default": "narrator",
+      "type": "string",
+      "enum": [
+        "happy",
+        "bittersweet",
+        "tragic",
+        "open",
+        "narrator"
+      ]
+    },
+    "yo_policy": {
+      "default": "yo",
+      "type": "string",
+      "enum": [
+        "yo",
+        "ye"
+      ]
+    },
+    "spelling": {
+      "default": "us",
+      "type": "string",
+      "enum": [
+        "us",
+        "uk"
+      ]
+    },
+    "original_characters": {
+      "default": "no",
+      "type": "string",
+      "enum": [
+        "no",
+        "yes",
+        "narrator"
+      ]
+    },
+    "preset": {
+      "default": "balanced",
+      "type": "string",
+      "enum": [
+        "fast",
+        "balanced",
+        "best"
+      ]
+    },
+    "muse": {
+      "type": "object",
+      "properties": {
+        "critic": {
+          "type": "boolean"
+        },
+        "max_revisions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "min_score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "models": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "plan": {
+          "default": "claude-fable-5-1",
+          "type": "string"
+        },
+        "prose": {
+          "default": "claude-opus-5-5",
+          "type": "string"
+        },
+        "critic": {
+          "default": "claude-fable-5-1",
+          "type": "string"
+        },
+        "extract": {
+          "default": "claude-haiku-5-5",
+          "type": "string"
+        },
+        "summary": {
+          "default": "claude-haiku-5-5",
+          "type": "string"
+        },
+        "lint": {
+          "default": "claude-haiku-5-5",
+          "type": "string"
+        }
+      }
+    },
+    "budget": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "context_tokens": {
+          "default": 60000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "project_usd": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "warn_at_usd": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "window": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "previous_tail_words": {
+          "default": 1500,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "current_chapter_words": {
+          "default": 12000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "series_bible": {
+      "type": "string"
+    },
+    "created": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "format_version",
+    "title",
+    "language"
+  ],
+  "additionalProperties": {}
+}

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "apex": {
+      "command": "node",
+      "args": ["${CLAUDE_PROJECT_DIR:-.}/packages/mcp-server/dist/bin.js"],
+      "env": {
+        "APEX_GALAXIA_RESOURCES": "${CLAUDE_PROJECT_DIR:-.}",
+        "APEX_PROJECT": "${APEX_PROJECT:-}"
+      }
+    }
+  }
+}

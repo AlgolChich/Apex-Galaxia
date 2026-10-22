@@ -1,0 +1,31 @@
+format_version: 1
+title: The Last Ferry
+language: en
+narrator: gwen
+storyteller: phoebe
+harshness: 2
+rating: medium
+length: medium
+pov: third
+tense: past
+cliffhangers: chapters
+ending: narrator
+yo_policy: yo
+spelling: us
+original_characters: narrator
+preset: balanced
+models:
+  plan: claude-fable-5-1
+  prose: claude-opus-5-5
+  critic: claude-fable-5-1
+  extract: claude-haiku-5-5
+  summary: claude-haiku-5-5
+  lint: claude-haiku-5-5
+budget:
+  context_tokens: 60000
+  project_usd: 20
+  warn_at_usd: 15
+window:
+  previous_tail_words: 1500
+  current_chapter_words: 12000
+created: '2026-10-22T00:00:00.000Z'

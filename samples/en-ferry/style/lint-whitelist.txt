@@ -1,0 +1,1 @@
+# Phrases the linter must not underline in this project, one per line.

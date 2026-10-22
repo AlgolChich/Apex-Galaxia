@@ -1,0 +1,16 @@
+chapters:
+  - number: 1
+    title: Eleven
+    status: draft
+    target_words: 1200
+    beats: []
+  - number: 2
+    title: The Strait
+    status: planned
+    target_words: 1400
+    beats:
+      - June brings the old woman tea; the woman asks about the brass plate
+      - Halloran cuts the engine mid-strait; the car on the deck rolls a foot
+      - The thermos is opened
+    turning_point: the captain breaks his own rule
+    cliffhanger: the old woman opens the suitcase and it is empty

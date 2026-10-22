@@ -1,0 +1,26 @@
+# Gwen (Guinevere): the default narrator profile. Appendix B of the build prompt is the
+# reference design; these files port it as data. Add another profile by copying this folder.
+name: gwen
+display_name:
+  en: Gwen (Guinevere)
+  ru: Гвин (Гвиневра)
+address:
+  en: Author
+  ru: Автор
+author: Algol
+system_file: system.md
+persona_file: persona.md
+hard_limits_file: hard-limits.md
+self_check_file: self-check.md
+response_format_file: response-format.md
+brief_file: brief.md
+defaults:
+  storyteller: cassandra
+  harshness: 3
+  rating: medium
+  length: medium
+  pov: third
+  tense: past
+  cliffhangers: chapters
+  original_characters: 'no'
+  ending: narrator

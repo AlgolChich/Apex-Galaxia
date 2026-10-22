@@ -1,0 +1,43 @@
+# English clichés and AI tells, one per line. Case-insensitive; a trailing `| note` is the hover
+# explanation. Single words listed here are AI-vocabulary tells (density matters: one is a
+# warning, three in a chapter is a problem).
+a shiver ran down her spine
+a shiver ran down his spine
+shiver down her spine
+shiver down his spine
+time seemed to stand still
+time stood still
+the silence was deafening
+deafening silence
+little did he know
+little did she know
+little did they know
+a wave of relief washed over
+a wave of fear washed over
+washed over her
+washed over him
+couldn't help but
+could not help but
+let out a breath she didn't know she was holding
+let out a breath he didn't know he was holding
+breath she didn't know she was holding
+eyes widened
+her eyes widened
+his eyes widened
+heart skipped a beat
+heart pounded in her chest
+heart pounded in his chest
+delve | AI vocabulary
+delved | AI vocabulary
+a testament to | AI vocabulary
+tapestry | AI vocabulary
+in the heart of | AI vocabulary
+nestled | AI vocabulary
+palpable | AI vocabulary
+a sense of | filler
+for a moment, everything was still
+and in that moment
+in that moment, he knew
+in that moment, she knew
+it was only the beginning
+nothing would ever be the same

@@ -1,0 +1,60 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/plan-chapters.yaml.schema.json",
+  "title": "plan-chapters.yaml",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "chapters": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "default": "",
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "default": "planned",
+            "type": "string",
+            "enum": [
+              "planned",
+              "draft",
+              "revised",
+              "final"
+            ]
+          },
+          "target_words": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "beats": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "turning_point": {
+            "type": "string"
+          },
+          "cliffhanger": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      }
+    }
+  }
+}

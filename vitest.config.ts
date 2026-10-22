@@ -13,8 +13,17 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['packages/*/test/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
-    environment: 'node',
     testTimeout: 20_000,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'packages',
+          include: ['packages/*/test/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      'apps/desktop/vitest.config.ts',
+    ],
   },
 });

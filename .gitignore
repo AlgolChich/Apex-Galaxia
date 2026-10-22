@@ -36,3 +36,11 @@ apps/desktop/src-tauri/gen/
 # Replay cassettes recorded against the real API are committed on purpose;
 # scratch recordings are not.
 packages/adapters/cassettes/scratch/
+
+# Desktop app build output and local test artifacts
+apps/desktop/dist/
+apps/desktop/sidecar/dist/
+apps/desktop/src-tauri/binaries/
+apps/desktop/src-tauri/resources/
+apps/desktop/test-results/
+apps/desktop/playwright-report/

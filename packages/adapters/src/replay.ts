@@ -42,6 +42,8 @@ export interface ReplayAdapterOptions {
   /** A scripted answer for tests when nothing is recorded. */
   responder?: Responder;
   registry?: ModelRegistry;
+  /** Milliseconds between streamed chunks when `onDelta` is set; 0 (default) streams at once. */
+  streamDelayMs?: number;
 }
 
 /**
@@ -135,10 +137,14 @@ export class ReplayAdapter implements ModelAdapter {
     };
   }
 
-  private emit(options: GenerateOptions, entry: CassetteEntry, hash: string, started: number, replay: boolean): GenerateResult {
+  private async emit(options: GenerateOptions, entry: CassetteEntry, hash: string, started: number, replay: boolean): Promise<GenerateResult> {
     if (options.onDelta) {
       const chunk = 80;
-      for (let i = 0; i < entry.text.length; i += chunk) options.onDelta(entry.text.slice(i, i + chunk));
+      const delay = this.options.streamDelayMs ?? 0;
+      for (let i = 0; i < entry.text.length; i += chunk) {
+        options.onDelta(entry.text.slice(i, i + chunk));
+        if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
     const result: GenerateResult = {
       text: entry.text,

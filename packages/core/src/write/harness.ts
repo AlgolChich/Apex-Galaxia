@@ -1009,6 +1009,11 @@ export class Harness {
 
       while (state.completed.length < state.target_chapters) {
         const n = state.next_chapter;
+        if (options.signal?.aborted) {
+          state = await this.saveRun({ ...state, status: 'paused' }, `paused by the Author before chapter ${n}, stage ${state.stage}`);
+          progress(state, 'paused');
+          return state;
+        }
         if (state.stage === 'plan') {
           const existing = await this.readBeatSheet(n);
           if (!existing) {
@@ -1084,4 +1089,6 @@ export interface RunBookOptions {
   readerReport?: boolean;
   onProgress?: (state: RunState, message: string) => void;
   onDelta?: (text: string) => void;
+  /** Abort between stages: the run saves itself as `paused` and returns; resume with `resume`. */
+  signal?: AbortSignal;
 }

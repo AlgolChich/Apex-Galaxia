@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type { ServerNotification, ServerRequest } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
   Canvas,
@@ -35,6 +37,7 @@ import {
   type Resources,
 } from '@apex-galaxia/core';
 import { createAdapter } from '@apex-galaxia/adapters';
+import { registerAppTools } from './app-tools.js';
 
 export interface ServerOptions {
   /** Initial project folder; tools can switch with project_open. */
@@ -56,6 +59,20 @@ function fail(error: unknown): ToolResult {
   return { content: [{ type: 'text', text: message }], isError: true };
 }
 
+/**
+ * Streaming for clients that sent a progress token: every text delta goes out as a
+ * `notifications/progress` message (progress counts characters, `message` carries the delta).
+ */
+function deltaSender(extra: RequestHandlerExtra<ServerRequest, ServerNotification>): ((text: string) => void) | undefined {
+  const token = extra._meta?.progressToken;
+  if (token === undefined) return undefined;
+  let progress = 0;
+  return (text: string) => {
+    progress += text.length;
+    void extra.sendNotification({ method: 'notifications/progress', params: { progressToken: token, progress, message: text } }).catch(() => undefined);
+  };
+}
+
 const LANG = z.enum(['ru', 'en']);
 const KIND = z.enum(ENTRY_KINDS);
 
@@ -69,14 +86,23 @@ export class ApexMcpServer {
   private harness: Harness | undefined;
   private adapter: ModelAdapter | undefined;
   private resources: Resources | undefined;
+  private keySource: string = 'unknown';
   private readonly prepared = new Map<string, Prepared>();
 
   constructor(private readonly options: ServerOptions = {}) {
     this.root = options.projectRoot ? path.resolve(options.projectRoot) : undefined;
-    this.server = new McpServer({ name: 'apex-galaxia', version: '0.1.0' }, { instructions: INSTRUCTIONS });
+    this.server = new McpServer({ name: 'apex-galaxia', version: '0.1.0' }, { instructions: INSTRUCTIONS, capabilities: { logging: {} } });
     this.registerTools();
     this.registerResources();
     this.registerPrompts();
+    registerAppTools(this.server, {
+      getHarness: () => this.getHarness(),
+      getStore: () => this.getStore(),
+      getAdapter: () => this.getAdapter(),
+      getResources: () => this.getResources(),
+      keySource: () => this.keySource,
+      projectRoot: () => this.root,
+    });
   }
 
   private async getResources(): Promise<Resources> {
@@ -86,7 +112,14 @@ export class ApexMcpServer {
 
   private async getAdapter(): Promise<ModelAdapter> {
     if (!this.adapter) {
-      this.adapter = this.options.adapterFactory ? await this.options.adapterFactory() : (await createAdapter()).adapter;
+      if (this.options.adapterFactory) {
+        this.adapter = await this.options.adapterFactory();
+        this.keySource = 'custom';
+      } else {
+        const choice = await createAdapter();
+        this.adapter = choice.adapter;
+        this.keySource = choice.keySource;
+      }
     }
     return this.adapter;
   }
@@ -523,11 +556,11 @@ export class ApexMcpServer {
     });
     s.registerTool(
       'suggestion_accept',
-      { title: 'Accept a suggestion', description: 'Apply a pending suggestion to its chapter (or create the chapter). The only way generated prose reaches a chapter.', inputSchema: { id: z.string() } },
-      async ({ id }) => {
+      { title: 'Accept a suggestion', description: 'Apply a pending suggestion to its chapter (or create the chapter). The only way generated prose reaches a chapter. edited_text applies the Author\'s edited version instead (and the edit is logged for lesson capture).', inputSchema: { id: z.string(), edited_text: z.string().optional() } },
+      async ({ id, edited_text }) => {
         try {
           const harness = await this.getHarness();
-          const chapter = await harness.accept(id);
+          const chapter = await harness.accept(id, edited_text !== undefined ? { editedText: edited_text } : {});
           return ok({ chapter: chapter.front, path: chapter.path, stem: chapter.stem });
         } catch (error) {
           return fail(error);
@@ -552,12 +585,14 @@ export class ApexMcpServer {
         description: 'Generate a continuation (or a guided one with instruction) through the configured model. Needs an API key; otherwise use task_prepare/task_submit.',
         inputSchema: { chapter: z.number().int().optional(), instruction: z.string().optional(), target_words: z.number().int().optional(), cursor: z.number().int().optional(), pins: z.array(z.string()).optional() },
       },
-      async (input) => {
+      async (input, extra) => {
         try {
           const harness = await this.getHarness();
           const chapter = input.chapter !== undefined ? await harness.store.getChapter(input.chapter) : undefined;
+          const onDelta = deltaSender(extra);
           const outcome = await harness.write(input.instruction ? 'guided' : 'continue', {
             ...(chapter ? { chapter } : {}),
+            ...(onDelta ? { onDelta } : {}),
             ...(input.instruction ? { instruction: input.instruction } : {}),
             ...(input.target_words !== undefined ? { targetWords: input.target_words } : {}),
             ...(input.cursor !== undefined ? { cursor: input.cursor } : {}),
@@ -573,11 +608,13 @@ export class ApexMcpServer {
     s.registerTool(
       'write_chapter',
       { title: 'Write: chapter (model)', description: 'Plan (if needed) and write a whole chapter through the configured models. Needs an API key.', inputSchema: { chapter_number: z.number().int().optional(), title: z.string().optional(), target_words: z.number().int().optional() } },
-      async (input) => {
+      async (input, extra) => {
         try {
           const harness = await this.getHarness();
+          const onDelta = deltaSender(extra);
           const outcome = await harness.write('chapter', {
             ...(input.chapter_number !== undefined ? { chapterNumber: input.chapter_number } : {}),
+            ...(onDelta ? { onDelta } : {}),
             ...(input.title ? { title: input.title } : {}),
             ...(input.target_words !== undefined ? { targetWords: input.target_words } : {}),
           });

@@ -4,12 +4,13 @@ import { parse as parseYaml } from 'yaml';
 import { ApexError, ModelRegistry, NoModelAdapter, UserConfigSchema, defaultUserDir, type ModelAdapter, type UserConfig } from '@apex-galaxia/core';
 import { AnthropicAdapter } from './anthropic.js';
 import { ReplayAdapter } from './replay.js';
+import { scriptedResponder } from './scripted.js';
 
 export interface AdapterChoice {
   adapter: ModelAdapter;
   userConfig: UserConfig;
   /** Where the API key came from, for the first-run message; never the key itself. */
-  keySource: 'env' | 'env-file' | 'none' | 'replay';
+  keySource: 'env' | 'env-file' | 'none' | 'replay' | 'scripted';
 }
 
 /** Read ~/.apex-galaxia/config.yaml (or APEX_GALAXIA_HOME); missing file means defaults. */
@@ -46,6 +47,8 @@ export interface CreateAdapterOptions {
   cassette?: string;
   replayMode?: 'replay' | 'record' | 'auto';
   registry?: ModelRegistry;
+  /** A scripted stand-in model for dev mode and UI tests (APEX_GALAXIA_SCRIPTED=1 also selects it). Never a default. */
+  scripted?: boolean;
 }
 
 /** Build the adapter the CLI and MCP server use, honoring replay for offline work. */
@@ -55,6 +58,15 @@ export async function createAdapter(options: CreateAdapterOptions = {}): Promise
   const registry = options.registry ?? new ModelRegistry();
   const cassette = options.cassette ?? process.env['APEX_GALAXIA_CASSETTE'];
   const { key, source } = await resolveApiKey(userDir);
+
+  if (options.scripted ?? process.env['APEX_GALAXIA_SCRIPTED'] === '1') {
+    const delay = Number(process.env['APEX_GALAXIA_SCRIPTED_DELAY_MS'] ?? '0');
+    return {
+      adapter: new ReplayAdapter({ mode: 'replay', responder: scriptedResponder(), registry, streamDelayMs: Number.isFinite(delay) ? delay : 0 }),
+      userConfig,
+      keySource: 'scripted',
+    };
+  }
 
   if (cassette) {
     const mode = options.replayMode ?? (key ? 'auto' : 'replay');

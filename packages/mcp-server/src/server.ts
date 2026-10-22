@@ -22,6 +22,7 @@ import {
   lintText,
   nextLessonId,
   parseFrontMatter,
+  parsePhraseList,
   renderBeatSheet,
   resolveResources,
   runEvalSuite,
@@ -410,7 +411,6 @@ export class ApexMcpServer {
             return ok(report, formatLintReport(report));
           }
           const resources = await this.getResources();
-          const { parsePhraseList } = await import('@apex-galaxia/core');
           const banned = {
             ru: parsePhraseList(await fs.readFile(path.join(resources.root, 'style', 'banned-phrases.ru.txt'), 'utf8')),
             en: parsePhraseList(await fs.readFile(path.join(resources.root, 'style', 'banned-phrases.en.txt'), 'utf8')),

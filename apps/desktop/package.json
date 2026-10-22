@@ -14,7 +14,12 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "tauri": "tauri",
-    "sidecar:bundle": "node sidecar/bundle.mjs"
+    "sidecar:bundle": "node sidecar/bundle.mjs && node sidecar/check.mjs",
+    "sidecar:check": "node sidecar/check.mjs",
+    "sidecar:node": "node sidecar/fetch-node.mjs",
+    "sidecar:prepare": "pnpm sidecar:bundle && pnpm sidecar:node",
+    "tauri:dev": "pnpm sidecar:prepare && tauri dev",
+    "tauri:build": "pnpm sidecar:prepare && tauri build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

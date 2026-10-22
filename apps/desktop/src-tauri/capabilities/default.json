@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window: core defaults (events, window, app, path), the native open dialog for folders and files, and opening a path with the system's default app. Everything else goes through the sidecar.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [{ "path": "**" }]
+    }
+  ]
+}

@@ -9,7 +9,7 @@ build environment of this session has no webkit2gtk, so Tauri builds must run in
 Author's machine.
 
 - [ ] `apps/desktop`: Tauri 2 shell, React + TypeScript + Vite, CodeMirror 6 with a Markdown mode and Cyrillic-capable fonts (Inter for UI, Literata or PT Serif for prose).
-- [ ] Sidecar packaging: the MCP server as a single executable per platform; Tauri external binary; spawn, relay, kill, restart.
+- [x] Sidecar packaging: the MCP server as one CJS bundle plus the Node runtime as the Tauri external binary (ADR 0010); spawn, relay, kill, restart with backoff; verified with a Linux deb under Xvfb.
 - [ ] Typed MCP client in the frontend generated from the server's tool list; streaming notifications for Write.
 - [ ] Layout (11.1): project tree left; distraction-free serif editor center with typewriter scrolling, word count and in-story date in the status bar; right panel with Bible, Chronicle, Lint, Critic, Inspector; collapsible; focus mode.
 - [ ] Actions (11.2): command palette (Ctrl/Cmd+K) listing every action with its shortcut; inline suggestion block with Accept, Retry, Retry with note, Discard, model and cost in small print; Rewrite, Weave and de-AI as diffs with per-paragraph accept or reject; lint underlines with severity and hover explanations; whitelist in one click; inspector view of the last prompt.

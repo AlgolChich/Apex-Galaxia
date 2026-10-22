@@ -11,7 +11,7 @@ pnpm install && pnpm build                       # builds packages/mcp-server, w
 cd apps/desktop
 APEX_GALAXIA_SCRIPTED=1 pnpm dev:bridge           # terminal 1: the dev bridge spawns the sidecar (scripted model)
 pnpm dev                                          # terminal 2: Vite on http://127.0.0.1:1420 (browser, no Tauri)
-pnpm tauri dev                                    # the real shell (needs Rust and the Tauri prerequisites)
+pnpm tauri:dev                                    # the real shell: bundles the sidecar, fetches the Node runtime, then tauri dev (needs Rust and the Tauri prerequisites)
 pnpm typecheck && pnpm test && pnpm build         # what CI runs for the frontend
 pnpm e2e                                          # Playwright smoke test against the bridge and the scripted model
 ```

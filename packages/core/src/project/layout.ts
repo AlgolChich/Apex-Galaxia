@@ -35,6 +35,8 @@ export interface ProjectLayout {
     brief: string;
     outline: string;
     chapters: string;
+    /** Full beat sheets per chapter (JSON), written by the planner. */
+    beats: string;
   };
   chapters: string;
   canvas: { dir: string; board: string };
@@ -83,6 +85,7 @@ export function projectLayout(root: string): ProjectLayout {
       brief: j('plan', 'brief.md'),
       outline: j('plan', 'outline.md'),
       chapters: j('plan', 'chapters.yaml'),
+      beats: j('plan', 'beats'),
     },
     chapters: j('chapters'),
     canvas: { dir: j('canvas'), board: j('canvas', 'board.json') },

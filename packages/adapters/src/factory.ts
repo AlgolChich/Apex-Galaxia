@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { ApexError, ModelRegistry, UserConfigSchema, defaultUserDir, type ModelAdapter, type UserConfig } from '@apex-galaxia/core';
+import { ApexError, ModelRegistry, NoModelAdapter, UserConfigSchema, defaultUserDir, type ModelAdapter, type UserConfig } from '@apex-galaxia/core';
 import { AnthropicAdapter } from './anthropic.js';
 import { ReplayAdapter } from './replay.js';
 
@@ -69,10 +69,8 @@ export async function createAdapter(options: CreateAdapterOptions = {}): Promise
     throw new ApexError('ADAPTER_ERROR', `Provider ${userConfig.provider} is not implemented yet; the adapter seam exists in packages/adapters`, { provider: userConfig.provider });
   }
   if (!key) {
-    throw new ApexError(
-      'ADAPTER_ERROR',
-      `No API key. Set ANTHROPIC_API_KEY in the environment or put ANTHROPIC_API_KEY=... into ${path.join(userDir, '.env')} (outside any repository).`,
-    );
+    // Everything that needs no model keeps working; a model call explains what is missing.
+    return { adapter: new NoModelAdapter(), userConfig, keySource: 'none' };
   }
   return {
     adapter: new AnthropicAdapter({ apiKey: key, registry, ...(userConfig.base_url ? { baseURL: userConfig.base_url } : {}) }),

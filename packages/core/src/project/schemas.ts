@@ -518,7 +518,8 @@ export type LessonProposal = z.infer<typeof LessonProposalSchema>;
 
 export const UserConfigSchema = z
   .object({
-    ui_language: LanguageSchema.default('en'),
+    /** Interface language; when unset, clients follow the project's story language. */
+    ui_language: LanguageSchema.optional(),
     provider: z.enum(['anthropic', 'openai-compatible', 'ollama']).default('anthropic'),
     base_url: z.string().optional(),
     models: ModelRolesSchema.partial().default({}),

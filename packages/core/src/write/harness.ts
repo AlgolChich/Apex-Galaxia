@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { z } from 'zod';
 import { ApexError } from '../util/errors.js';
-import { countWords, isoNow, sha256 } from '../util/fs.js';
+import { countWords, isoNow, sha256, shortId } from '../util/fs.js';
 import { CachedTokenCounter, HeuristicTokenCounter, type TokenCounter } from '../context/tokens.js';
 import { assemblePrompt, chapterHeading, type AssembleRequest, type AssembledPrompt } from '../context/assembler.js';
 import { loadBible, renderEntry, type BibleSnapshot } from '../bible/entries.js';
@@ -92,6 +92,43 @@ export interface Estimate {
   expectedOutputTokens: number;
   costUsd: number;
   exact: boolean;
+}
+
+/** Everything a client needs to run a task with its own model and hand the output back. */
+export interface Prepared {
+  handle: string;
+  task: string;
+  request: AssembleRequest;
+  assembled: AssembledPrompt;
+  estimate: Estimate;
+  expectHeading?: { number: number; title: string };
+  chapterNumber?: number;
+  title?: string;
+  chapterStem?: string;
+  cursor?: number;
+  roll?: Roll;
+}
+
+export interface PrepareParams extends WriteParams {
+  /** Task name; write modes are `write.continue` etc. */
+  vars?: Record<string, string>;
+  selection?: string;
+  plannerView?: boolean;
+  hint?: string;
+}
+
+export interface SubmitResult {
+  task: string;
+  text: string;
+  json: unknown;
+  violations: string[];
+  /** For write tasks: the suggestion and its lint report. */
+  suggestion?: SuggestionFile;
+  lint?: LintReport;
+  diff?: DiffBlock[];
+  /** Task-specific outcome (beat sheet, proposal preview, summary file, …). */
+  outcome?: unknown;
+  callId: string;
 }
 
 const OUTPUT_TOKENS: Record<string, number> = {
@@ -298,18 +335,31 @@ export class Harness {
   // Write
   // -------------------------------------------------------------------------
 
-  async write(mode: WriteMode, params: WriteParams = {}): Promise<WriteOutcome> {
+  /** Stored beat sheet for a chapter, if the planner wrote one. */
+  async readBeatSheet(number: number): Promise<BeatSheet | undefined> {
+    const text = await this.store.readText(path.join(this.store.layout.plan.beats, `${String(number).padStart(2, '0')}.json`));
+    if (!text) return undefined;
+    const parsed = BeatSheetSchema.safeParse(JSON.parse(text));
+    return parsed.success ? parsed.data : undefined;
+  }
+
+  /** Build the request for a write mode; shared by the API path and the prepare/submit path. */
+  private async prepareWrite(mode: WriteMode, params: WriteParams, planIfMissing: boolean): Promise<Omit<Prepared, 'handle' | 'assembled' | 'estimate'>> {
     const chapters = await this.store.listChapters();
     const chapter = params.chapter ?? (mode === 'chapter' ? undefined : chapters[chapters.length - 1]);
-    const targetWords = params.targetWords ?? (mode === 'chapter' ? 1_800 : 300);
+    const targetWords = params.targetWords ?? (mode === 'chapter' ? this.defaultChapterWords() : 300);
     const vars: Record<string, string> = { target_words: String(targetWords) };
     const request: AssembleRequest = { task: `write.${mode}`, vars };
     if (chapter) request.chapter = chapter;
     if (params.cursor !== undefined) request.cursor = params.cursor;
     if (params.pins) request.pins = params.pins;
-    let expectHeading: { number: number; title: string } | undefined;
-    let chapterNumber = chapter?.front.number;
-    let title = chapter?.front.title;
+    const out: Omit<Prepared, 'handle' | 'assembled' | 'estimate'> = { task: `write.${mode}`, request };
+    if (chapter) {
+      out.chapterNumber = chapter.front.number;
+      out.title = chapter.front.title;
+      out.chapterStem = chapter.stem;
+      out.cursor = params.cursor ?? chapter.body.length;
+    }
 
     if (mode === 'guided') {
       if (!params.instruction) throw new ApexError('INVALID_ARGUMENT', 'Guided continue needs an instruction');
@@ -320,39 +370,236 @@ export class Harness {
       vars['scene_card'] = params.sceneCard;
     }
     if (mode === 'chapter') {
-      chapterNumber = params.chapterNumber ?? (chapters[chapters.length - 1]?.front.number ?? 0) + 1;
-      const sheet = params.beatSheet ?? (await this.planChapter(chapterNumber, params.title ? { title: params.title } : {})).sheet;
-      title = params.title ?? sheet.title;
+      const chapterNumber = params.chapterNumber ?? (chapters[chapters.length - 1]?.front.number ?? 0) + 1;
+      let sheet = params.beatSheet ?? (await this.readBeatSheet(chapterNumber));
+      if (!sheet) {
+        if (!planIfMissing) {
+          throw new ApexError('INVALID_ARGUMENT', `Chapter ${chapterNumber} has no beat sheet yet; prepare and submit plan.chapter first`, { chapterNumber });
+        }
+        sheet = (await this.planChapter(chapterNumber, params.title ? { title: params.title } : {})).sheet;
+      }
+      const title = params.title ?? sheet.title;
       vars['chapter_number'] = String(chapterNumber);
       vars['beat_sheet'] = renderBeatSheet(sheet);
       vars['heading'] = chapterHeading(this.language, chapterNumber, title);
       vars['chapter_title'] = title;
-      expectHeading = { number: chapterNumber, title };
       request.unlockSecretsFor = sheet.guns.filter((g) => g.startsWith('fires:')).map((g) => g.slice(6).trim());
-      request.vars = vars;
+      out.expectHeading = { number: chapterNumber, title };
+      out.chapterNumber = chapterNumber;
+      out.title = title;
     }
+    return out;
+  }
 
-    const run = await this.runTask(request, {
-      ...(params.onDelta ? { onDelta: params.onDelta } : {}),
-      ...(expectHeading ? { expectHeading } : {}),
-      maxTokens: mode === 'chapter' ? 8_000 : 4_000,
-    });
-    const text = run.text;
+  private async finishWrite(prepared: Omit<Prepared, 'handle' | 'assembled' | 'estimate'>, text: string, meta: { model: string; callId: string; costUsd: number; warnings: string[] }): Promise<{ suggestion: SuggestionFile; lint: LintReport }> {
     const lint = this.lint(text);
     const suggestion = await this.store.writeSuggestion(
       {
-        task: `write.${mode}`,
-        model: run.result.model,
-        call_id: run.result.callId,
-        cost_usd: run.result.costUsd,
-        ...(chapterNumber !== undefined ? { chapter: chapterNumber } : {}),
-        ...(title !== undefined ? { title } : {}),
-        ...(chapter ? { anchor: params.cursor ?? chapter.body.length } : {}),
-        ...(run.warnings.length > 0 ? { note: run.warnings.join(' | ') } : {}),
+        task: prepared.task,
+        model: meta.model,
+        call_id: meta.callId,
+        cost_usd: meta.costUsd,
+        ...(prepared.chapterNumber !== undefined ? { chapter: prepared.chapterNumber } : {}),
+        ...(prepared.title !== undefined ? { title: prepared.title } : {}),
+        ...(prepared.cursor !== undefined && prepared.task !== 'write.chapter' ? { anchor: prepared.cursor } : {}),
+        ...(meta.warnings.length > 0 ? { note: meta.warnings.join(' | ') } : {}),
       },
       text,
     );
-    return { mode, suggestion, text, lint, run, costUsd: run.result.costUsd, model: run.result.model };
+    return { suggestion, lint };
+  }
+
+  async write(mode: WriteMode, params: WriteParams = {}): Promise<WriteOutcome> {
+    const prepared = await this.prepareWrite(mode, params, true);
+    const run = await this.runTask(prepared.request, {
+      ...(params.onDelta ? { onDelta: params.onDelta } : {}),
+      ...(prepared.expectHeading ? { expectHeading: prepared.expectHeading } : {}),
+      maxTokens: mode === 'chapter' ? 8_000 : 4_000,
+    });
+    const { suggestion, lint } = await this.finishWrite(prepared, run.text, { model: run.result.model, callId: run.result.callId, costUsd: run.result.costUsd, warnings: run.warnings });
+    return { mode, suggestion, text: run.text, lint, run, costUsd: run.result.costUsd, model: run.result.model };
+  }
+
+  // -------------------------------------------------------------------------
+  // Prepare / submit: the client's own model does the generation
+  // -------------------------------------------------------------------------
+
+  /**
+   * Assemble the prompt for any task so a client (Claude Code in headless mode) can generate
+   * the output itself. For `plan.chapter` with Randy the d20 is rolled here and logged.
+   */
+  async prepare(task: string, params: PrepareParams = {}): Promise<Prepared> {
+    const handle = shortId('prep');
+    const vars = { ...(params.vars ?? {}) };
+    let base: Omit<Prepared, 'handle' | 'assembled' | 'estimate'>;
+    if (task.startsWith('write.')) {
+      const mode = task.slice(6) as WriteMode;
+      if (!['continue', 'guided', 'scene', 'chapter'].includes(mode)) {
+        throw new ApexError('INVALID_ARGUMENT', `Unknown write mode ${mode}`);
+      }
+      base = await this.prepareWrite(mode, params, false);
+      if (params.vars) base.request.vars = { ...(base.request.vars ?? {}), ...params.vars };
+    } else if (task === 'plan.chapter') {
+      const chapters = await this.store.listChapters();
+      const number = params.chapterNumber ?? (chapters[chapters.length - 1]?.front.number ?? 0) + 1;
+      let roll: Roll | undefined;
+      if (this.store.config.storyteller === 'randy') {
+        roll = rollD20(number, this.rng, 'before planning the chapter');
+        await this.chronicle.recordRoll(roll);
+      }
+      const hint = await this.planningHint(number, params.title, params.hint);
+      base = {
+        task,
+        request: { task, plannerView: true, ...(roll ? { latestRoll: roll } : {}), vars: { chapter_number: String(number), chapter_plan_hint: hint, ...vars } },
+        chapterNumber: number,
+        ...(params.title ? { title: params.title } : {}),
+        ...(roll ? { roll } : {}),
+      };
+    } else {
+      const chapter = params.chapter ?? (params.chapterNumber !== undefined ? await this.store.getChapter(params.chapterNumber) : undefined);
+      const state = await this.chronicle.readState();
+      const defaults: Record<string, string> = {
+        chapter_number: chapter ? String(chapter.front.number) : String(params.chapterNumber ?? 0),
+        chapter_text: chapter?.body ?? '',
+        state_yaml: renderStateYaml(state, { hidden: false }) + (task === 'chronicle.propose' ? renderStateYaml(state, { hidden: true }) : ''),
+        passage: params.selection ?? chapter?.body ?? '',
+        selection: params.selection ?? '',
+        lint_hits: params.selection || chapter ? formatLintReport(this.lint(params.selection ?? chapter?.body ?? '')) : '',
+        bible_index: this.bible.entries.map((e) => `- ${e.kind}/${e.slug}: ${e.front.name} — ${e.summary}`).join('\n') || '(empty)',
+        bible_full: `${this.bible.worldRules}\n\n${this.bible.timeline}\n\n${this.bible.entries.map((e) => renderEntry(e, { full: true, includeSecrets: true })).join('\n\n')}`,
+        existing_lessons: this.style.lessons.map((l) => `- ${l.id} [${l.category}] ${l.rule}`).join('\n') || '(none)',
+        count: '3',
+        focus: '',
+        intensity: 'medium',
+        perceiver: 'the viewpoint character',
+        avoid: 'none beyond the banned list',
+        surrounding: '',
+        percent: '20',
+        tone: '',
+        viewpoint: '',
+        instruction: '',
+        before: '',
+        after: '',
+        note: '',
+        sample: '',
+        findings: '',
+        text: chapter?.body ?? params.selection ?? '',
+        what: 'ideas',
+        request: '',
+        topic: '',
+        universe: '',
+        canon_point: '',
+      };
+      base = {
+        task,
+        request: {
+          task,
+          ...(chapter ? { chapter } : {}),
+          ...(params.selection ? { selection: params.selection } : {}),
+          ...(params.plannerView || ['canvas.directions', 'twist'].includes(task) ? { plannerView: true } : {}),
+          vars: { ...defaults, ...vars },
+        },
+        ...(chapter ? { chapterNumber: chapter.front.number, chapterStem: chapter.stem } : {}),
+      };
+    }
+    const assembled = await this.assemble(base.request);
+    const estimate = this.estimateFor(assembled);
+    return { ...base, handle, assembled, estimate };
+  }
+
+  private async planningHint(number: number, title?: string, hint?: string): Promise<string> {
+    const plan = (await this.store.readYaml(this.store.layout.plan.chapters, ChaptersPlanSchema)) ?? { chapters: [] };
+    const planned = plan.chapters.find((c) => c.number === number);
+    const outline = (await this.store.readText(this.store.layout.plan.outline)) ?? '';
+    const brief = (await this.store.readText(this.store.layout.plan.brief)) ?? '';
+    return [
+      brief.trim() ? `<brief>\n${brief.trim()}\n</brief>` : '',
+      outline.trim() ? `<outline>\n${outline.trim()}\n</outline>` : '',
+      planned ? `The outline plans this chapter as: ${planned.title}${planned.beats.length ? `; beats: ${planned.beats.join('; ')}` : ''}${planned.turning_point ? `; turning point: ${planned.turning_point}` : ''}.` : '',
+      title ? `The Author set the title: «${title}».` : '',
+      hint ?? '',
+    ]
+      .filter((s) => s.length > 0)
+      .join('\n\n');
+  }
+
+  private async storeBeatSheet(sheet: BeatSheet): Promise<void> {
+    await this.store.writeText(path.join(this.store.layout.plan.beats, `${String(sheet.chapter).padStart(2, '0')}.json`), JSON.stringify(sheet, null, 2) + '\n');
+    const plan = (await this.store.readYaml(this.store.layout.plan.chapters, ChaptersPlanSchema)) ?? { chapters: [] };
+    const planned = plan.chapters.find((c) => c.number === sheet.chapter);
+    const nextPlan = {
+      chapters: [
+        ...plan.chapters.filter((c) => c.number !== sheet.chapter),
+        { ...(planned ?? { number: sheet.chapter, status: 'planned' as const }), number: sheet.chapter, title: sheet.title, beats: sheet.beats, ...(sheet.cliffhanger ? { cliffhanger: sheet.cliffhanger } : {}), target_words: planned?.target_words ?? this.defaultChapterWords() },
+      ].sort((a, b) => a.number - b.number),
+    };
+    await this.store.writeYaml(this.store.layout.plan.chapters, ChaptersPlanSchema, nextPlan);
+  }
+
+  /**
+   * Take the client's output for a prepared task through the same pipeline a model result
+   * goes through: output contract, then the task's finisher (suggestion, beat sheet, preview…).
+   * The call is logged with provider `client`, cost zero.
+   */
+  async submit(prepared: Prepared, output: string, provider = 'client'): Promise<SubmitResult> {
+    const schemaName = prepared.assembled.jsonSchemaName;
+    const callId = shortId('call');
+    await this.store.appendCall({
+      id: callId,
+      ts: isoNow(),
+      task: prepared.task,
+      provider,
+      model: provider,
+      prompt_hash: prepared.assembled.inspector.promptHashHint,
+      input_tokens: prepared.assembled.inspector.totalTokens,
+      output_tokens: countWords(output),
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      cost_usd: 0,
+      latency_ms: 0,
+      accepted: null,
+      replay: false,
+    });
+    let text = output;
+    let json: unknown;
+    let violations: string[];
+    if (schemaName) {
+      const c = enforceJsonContract(output, schemaName);
+      json = c.value;
+      violations = c.violations;
+    } else {
+      const heading = prepared.expectHeading ? { language: this.language, number: prepared.expectHeading.number, title: prepared.expectHeading.title } : undefined;
+      const c = enforceProseContract(output, heading ? { heading } : {});
+      text = c.value;
+      violations = c.violations;
+    }
+    const result: SubmitResult = { task: prepared.task, text, json, violations, callId };
+    if (violations.length > 0) return result;
+
+    if (prepared.task.startsWith('write.')) {
+      const { suggestion, lint } = await this.finishWrite(prepared, text, { model: provider, callId, costUsd: 0, warnings: [] });
+      result.suggestion = suggestion;
+      result.lint = lint;
+    } else if (prepared.task === 'plan.chapter') {
+      const sheet = BeatSheetSchema.parse({ ...(json as object), chapter: prepared.chapterNumber, ...(prepared.title ? { title: prepared.title } : {}) });
+      await this.storeBeatSheet(sheet);
+      result.outcome = sheet;
+    } else if (prepared.task === 'chronicle.propose') {
+      const proposal = ChronicleProposalSchema.parse({ ...(json as object), chapter: prepared.chapterNumber });
+      result.outcome = await this.chronicle.preview(proposal);
+    } else if (prepared.task === 'summary.chapter' && prepared.chapterStem) {
+      const chapter = await this.store.getChapter(prepared.chapterStem);
+      const file = path.join(this.store.layout.chronicle.summaries, `${chapter.stem}.md`);
+      await this.store.writeMarkdown(file, SummaryFrontMatterSchema, { chapter: chapter.front.number, source_hash: sha256(chapter.body), generated_at: isoNow(), model: provider, words: countWords(text) }, text);
+      result.outcome = { file };
+    } else if (prepared.task.startsWith('rewrite.') || prepared.task === 'revise') {
+      const passage = prepared.request.vars?.['passage'] ?? '';
+      result.diff = diffParagraphs(passage, text);
+      result.lint = this.lint(text);
+    } else if (schemaName) {
+      result.outcome = json;
+    }
+    return result;
   }
 
   /**
@@ -403,23 +650,13 @@ export class Harness {
       roll = rollD20(number, this.rng, 'before planning the chapter');
       await this.chronicle.recordRoll(roll);
     }
-    const plan = (await this.store.readYaml(this.store.layout.plan.chapters, ChaptersPlanSchema)) ?? { chapters: [] };
-    const planned = plan.chapters.find((c) => c.number === number);
-    const outline = (await this.store.readText(this.store.layout.plan.outline)) ?? '';
-    const brief = (await this.store.readText(this.store.layout.plan.brief)) ?? '';
-    const hintParts = [
-      brief.trim() ? `<brief>\n${brief.trim()}\n</brief>` : '',
-      outline.trim() ? `<outline>\n${outline.trim()}\n</outline>` : '',
-      planned ? `The outline plans this chapter as: ${planned.title}${planned.beats.length ? `; beats: ${planned.beats.join('; ')}` : ''}${planned.turning_point ? `; turning point: ${planned.turning_point}` : ''}.` : '',
-      options.title ? `The Author set the title: «${options.title}».` : '',
-      options.hint ?? '',
-    ].filter((s) => s.length > 0);
+    const hint = await this.planningHint(number, options.title, options.hint);
     const run = await this.runTask<BeatSheet>(
       {
         task: 'plan.chapter',
         plannerView: true,
         ...(roll ? { latestRoll: roll } : {}),
-        vars: { chapter_number: String(number), chapter_plan_hint: hintParts.join('\n\n') },
+        vars: { chapter_number: String(number), chapter_plan_hint: hint },
       },
       { maxTokens: 4_000 },
     );
@@ -427,13 +664,7 @@ export class Harness {
       throw new ApexError('CONTRACT_VIOLATION', `The planner returned no valid beat sheet: ${run.violations.join('; ')}`);
     }
     const sheet = BeatSheetSchema.parse({ ...run.json, chapter: number, ...(options.title ? { title: options.title } : {}) });
-    const nextPlan = {
-      chapters: [
-        ...plan.chapters.filter((c) => c.number !== number),
-        { ...(planned ?? { number, status: 'planned' as const }), number, title: sheet.title, beats: sheet.beats, ...(sheet.cliffhanger ? { cliffhanger: sheet.cliffhanger } : {}), target_words: planned?.target_words ?? this.defaultChapterWords() },
-      ].sort((a, b) => a.number - b.number),
-    };
-    await this.store.writeYaml(this.store.layout.plan.chapters, ChaptersPlanSchema, nextPlan);
+    await this.storeBeatSheet(sheet);
     return { sheet, ...(roll ? { roll } : {}), run };
   }
 

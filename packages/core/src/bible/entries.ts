@@ -70,11 +70,20 @@ function firstParagraph(body: string): string {
   return para.replace(/\s+/g, ' ').trim();
 }
 
+/** Template hints are italic lines (`_…_`); they never count as content. */
+function firstContentLine(text: string): string {
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) continue;
+    if (/^_.*_$/.test(trimmed)) continue;
+    return trimmed;
+  }
+  return '';
+}
+
 export function parseEntry(kind: EntryKind, file: string, front: EntryFrontMatter, body: string, shared = false): BibleEntry {
   const sections = splitSections(body);
-  const summary = (getSection(sections, ...(SECTION_ALIASES['summary'] ?? [])) ?? firstParagraph(body))
-    .split(/\r?\n/)[0]
-    ?.trim() ?? '';
+  const summary = firstContentLine(getSection(sections, ...(SECTION_ALIASES['summary'] ?? [])) ?? firstParagraph(body));
   return {
     kind,
     slug: path.basename(file, '.md'),

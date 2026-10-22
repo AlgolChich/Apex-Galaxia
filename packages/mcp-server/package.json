@@ -1,0 +1,29 @@
+{
+  "name": "@apex-galaxia/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server over stdio exposing the Apex Galaxia core (project, Bible, chronicle, write, lint, critic) to Claude Code and any MCP client.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "apex-mcp": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@apex-galaxia/adapters": "workspace:*",
+    "@apex-galaxia/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

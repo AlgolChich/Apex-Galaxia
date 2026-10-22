@@ -5,7 +5,6 @@
   "type": "object",
   "properties": {
     "ui_language": {
-      "default": "en",
       "type": "string",
       "enum": [
         "ru",

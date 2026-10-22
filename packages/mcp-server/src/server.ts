@@ -738,8 +738,8 @@ export class ApexMcpServer {
     s.registerTool('canvas_directions', { title: 'Directions (model)', description: '2–5 ways the story could go; the obvious one marked, one recommended. twist=true for twists under the anti-template rule.', inputSchema: { count: z.number().int().optional(), focus: z.string().optional(), twist: z.boolean().optional() } }, async (input) => {
       try {
         const harness = await this.getHarness();
-        const { directions } = await harness.directions({ ...(input.count !== undefined ? { count: input.count } : {}), ...(input.focus ? { focus: input.focus } : {}), ...(input.twist ? { twist: true } : {}) });
-        return ok(directions);
+        const { directions, run } = await harness.directions({ ...(input.count !== undefined ? { count: input.count } : {}), ...(input.focus ? { focus: input.focus } : {}), ...(input.twist ? { twist: true } : {}) });
+        return ok({ ...directions, model: run.result.model, costUsd: run.result.costUsd });
       } catch (error) {
         return fail(error);
       }
@@ -812,11 +812,11 @@ export class ApexMcpServer {
     });
     s.registerTool(
       'canvas_add',
-      { title: 'Add a card', description: 'Add a card to the canvas (kind: idea, scene, arc, twist, branch, question) and optional links to existing cards.', inputSchema: { kind: z.enum(['idea', 'scene', 'arc', 'twist', 'branch', 'question']), title: z.string(), text: z.string().optional(), lane: z.string().optional(), links_to: z.array(z.string()).optional().describe('ids of cards this one connects to') } },
+      { title: 'Add a card', description: 'Add a card to the canvas (kind: idea, scene, arc, twist, branch, question) and optional links to existing cards.', inputSchema: { kind: z.enum(['idea', 'scene', 'arc', 'twist', 'branch', 'question']), title: z.string(), text: z.string().optional(), lane: z.string().optional(), links_to: z.array(z.string()).optional().describe('ids of cards this one connects to'), x: z.number().optional(), y: z.number().optional() } },
       async (input) => {
         try {
           const canvas = new Canvas(await this.getStore());
-          const card = await canvas.addCard({ kind: input.kind, title: input.title, ...(input.text ? { text: input.text } : {}), ...(input.lane ? { lane: input.lane } : {}) });
+          const card = await canvas.addCard({ kind: input.kind, title: input.title, ...(input.text ? { text: input.text } : {}), ...(input.lane ? { lane: input.lane } : {}), ...(input.x !== undefined ? { x: input.x } : {}), ...(input.y !== undefined ? { y: input.y } : {}) });
           for (const to of input.links_to ?? []) await canvas.link(card.id, to);
           return ok(card);
         } catch (error) {
@@ -898,8 +898,8 @@ export class ApexMcpServer {
       async ({ action, card, question, chapter_count }) => {
         try {
           const harness = await this.getHarness();
-          const { result } = await harness.canvasAction(action, { ...(card ? { cardId: card } : {}), ...(question ? { question } : {}), ...(chapter_count !== undefined ? { chapterCount: chapter_count } : {}) });
-          return ok(result);
+          const { result, run } = await harness.canvasAction(action, { ...(card ? { cardId: card } : {}), ...(question ? { question } : {}), ...(chapter_count !== undefined ? { chapterCount: chapter_count } : {}) });
+          return ok({ ...result, model: run.result.model, costUsd: run.result.costUsd });
         } catch (error) {
           return fail(error);
         }

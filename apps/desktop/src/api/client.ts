@@ -234,8 +234,8 @@ export class ApexClient {
     return this.call('weave', { paragraph, detail });
   }
 
-  canvasDirections(options: { count?: number; focus?: string; twist?: boolean } = {}): Promise<{ options: Direction[] }> {
-    return this.call('canvas_directions', { ...options });
+  canvasDirections(options: { count?: number; focus?: string; twist?: boolean } = {}, callOptions?: CallOptions): Promise<{ options: Direction[] }> {
+    return this.call('canvas_directions', { ...options }, callOptions);
   }
 
   lessonsPropose(before: string, after: string, note?: string): Promise<LessonProposal> {

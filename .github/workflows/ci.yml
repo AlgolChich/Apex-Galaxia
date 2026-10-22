@@ -16,8 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,5 +29,7 @@ jobs:
         run: |
           node packages/cli/dist/bin.js --version
           node packages/cli/dist/bin.js new "$RUNNER_TEMP/smoke-ru" --title "Проба" --lang ru
-          node packages/cli/dist/bin.js lint evals/fault-set/tells.ru.md --lang ru --json > /dev/null
+          node packages/cli/dist/bin.js lint samples/ru-mayak/chapters/01-smena.md --project samples/ru-mayak
           node packages/cli/dist/bin.js open "$RUNNER_TEMP/smoke-ru"
+          node packages/cli/dist/bin.js export samples/en-ferry --format epub --out "$RUNNER_TEMP/ferry.epub"
+          node packages/cli/dist/bin.js eval --no-critic --out "$RUNNER_TEMP/evals"

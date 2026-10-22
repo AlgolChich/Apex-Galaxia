@@ -11,6 +11,10 @@ import { strings as treeStrings } from '../features/tree/strings.js';
 import { strings as viewsStrings } from '../features/views/strings.js';
 import { strings as wizardStrings } from '../features/wizard/strings.js';
 import { strings as chronicleUpdateStrings } from '../features/chronicle-update/strings.js';
+import { strings as chatStrings } from '../features/chat/strings.js';
+import { strings as canvasStrings } from '../features/canvas/strings.js';
+import { strings as candidatesStrings } from '../features/candidates/strings.js';
+import { strings as importStrings } from '../features/import/strings.js';
 
 type Table = Record<string, string>;
 interface Bundle {
@@ -18,7 +22,7 @@ interface Bundle {
   en: Table;
 }
 
-const BUNDLES: Bundle[] = [common, layoutStrings, editorStrings, treeStrings, paletteStrings, suggestionStrings, diffStrings, describeStrings, panelsStrings, wizardStrings, viewsStrings, settingsStrings, chronicleUpdateStrings];
+const BUNDLES: Bundle[] = [common, layoutStrings, editorStrings, treeStrings, paletteStrings, suggestionStrings, diffStrings, describeStrings, panelsStrings, wizardStrings, viewsStrings, settingsStrings, chronicleUpdateStrings, chatStrings, canvasStrings, candidatesStrings, importStrings];
 
 function merge(language: 'ru' | 'en'): Table {
   const out: Table = {};

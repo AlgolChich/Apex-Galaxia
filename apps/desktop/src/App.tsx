@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 import { useStore } from './state/store.js';
 import { useT } from './i18n/index.js';
+import { CandidatesDialog } from './features/candidates/index.js';
+import { CanvasView } from './features/canvas/index.js';
+import { NarratorPanel } from './features/chat/index.js';
 import { ChronicleUpdateDialog } from './features/chronicle-update/index.js';
+import { ImportDialog } from './features/import/index.js';
 import { DescribeDialog } from './features/describe/index.js';
 import { DiffDialog } from './features/diff/index.js';
 import { Editor } from './features/editor/index.js';
@@ -83,6 +87,8 @@ export function App() {
         return <RunView />;
       case 'settings':
         return <SettingsView />;
+      case 'canvas':
+        return <CanvasView />;
       default:
         return (
           <>
@@ -102,7 +108,7 @@ export function App() {
         {ui.treeOpen && root ? <ProjectTree /> : null}
       </aside>
       <main className="app__main">{main}</main>
-      <aside className="app__panel">{ui.panel && root ? <RightPanel panel={ui.panel} /> : null}</aside>
+      <aside className="app__panel">{ui.panel === 'narrator' && root ? <NarratorPanel /> : ui.panel && root ? <RightPanel panel={ui.panel} /> : null}</aside>
       <div className="app__status">
         <StatusBar />
       </div>
@@ -110,6 +116,8 @@ export function App() {
       <DescribeDialog />
       <DiffDialog />
       <ChronicleUpdateDialog />
+      <CandidatesDialog />
+      <ImportDialog />
       <div className="toasts" role="status" aria-live="polite">
         {ui.toasts.map((toast) => (
           <div key={toast.id} className={`toast toast--${toast.kind}`} onClick={() => dismissToast(toast.id)}>

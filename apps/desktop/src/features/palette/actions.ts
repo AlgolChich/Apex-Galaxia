@@ -264,6 +264,14 @@ export const ACTIONS: PaletteAction[] = [
   view('plan', '4'),
   view('run', '5'),
   view('settings', '6'),
+  view('canvas', '7'),
+  panel('narrator', '6'),
+  { id: 'write.candidates', label: 'palette.action.write.candidates', hint: 'palette.hint.write.candidates', group: 'write', shortcut: { key: 'c', mod: true, shift: true }, needs: ['chapter'], run: () => {
+      window.dispatchEvent(new CustomEvent('apex:candidates', { detail: { mode: 'continue' } }));
+    } },
+  { id: 'import.manuscript', label: 'palette.action.import.manuscript', hint: 'palette.hint.import.manuscript', group: 'app', run: () => {
+      window.dispatchEvent(new CustomEvent('apex:import', { detail: { kind: 'manuscript' } }));
+    } },
 
   { id: 'language.ru', label: 'palette.action.language.ru', group: 'app', run: ({ app }) => app.setLanguage('ru') },
   { id: 'language.en', label: 'palette.action.language.en', group: 'app', run: ({ app }) => app.setLanguage('en') },

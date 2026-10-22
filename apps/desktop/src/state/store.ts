@@ -6,7 +6,7 @@ import type { ChapterFront, ChapterSummary, LintReport, ModelStatus, ProjectConf
 export type UiLanguage = 'ru' | 'en';
 export type Theme = 'light' | 'dark' | 'system';
 export type View = 'editor' | 'bible' | 'chronicle' | 'plan' | 'run' | 'settings' | 'canvas';
-export type Panel = 'bible' | 'chronicle' | 'lint' | 'critic' | 'inspector';
+export type Panel = 'bible' | 'chronicle' | 'lint' | 'critic' | 'inspector' | 'narrator';
 export type WriteMode = 'continue' | 'guided' | 'scene' | 'chapter';
 
 export interface Toast {

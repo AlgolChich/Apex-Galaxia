@@ -10,6 +10,7 @@ const ENTRIES: ReadonlyArray<{ view: View; key: string }> = [
   { view: 'bible', key: 'tree.bible' },
   { view: 'chronicle', key: 'tree.chronicle' },
   { view: 'plan', key: 'tree.plan' },
+  { view: 'canvas', key: 'tree.canvas' },
   { view: 'run', key: 'tree.runs' },
   { view: 'settings', key: 'tree.settings' },
 ];

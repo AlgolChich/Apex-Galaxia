@@ -832,6 +832,19 @@ export class ApexMcpServer {
         return fail(error);
       }
     });
+    s.registerTool(
+      'canvas_update',
+      { title: 'Update a card', description: 'Change a card\'s title, text, kind, lane or position on the board.', inputSchema: { id: z.string(), title: z.string().optional(), text: z.string().optional(), kind: z.enum(['idea', 'scene', 'arc', 'twist', 'branch', 'question']).optional(), lane: z.string().optional(), x: z.number().optional(), y: z.number().optional() } },
+      async ({ id, ...patch }) => {
+        try {
+          const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+          const card = await new Canvas(await this.getStore()).updateCard(id, clean);
+          return ok({ card });
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    );
     s.registerTool('canvas_remove', { title: 'Remove a card', description: 'Remove a card and links to it.', inputSchema: { id: z.string() } }, async ({ id }) => {
       try {
         await new Canvas(await this.getStore()).removeCard(id);

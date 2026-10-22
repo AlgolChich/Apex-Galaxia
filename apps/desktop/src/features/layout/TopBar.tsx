@@ -4,8 +4,8 @@ import { useStore, type Panel, type Theme, type View } from '../../state/store.j
 import { FrameSizing } from './Frame.js';
 import { describeModel } from './model.js';
 
-export const VIEWS: readonly View[] = ['editor', 'bible', 'chronicle', 'plan', 'run', 'settings'];
-export const PANELS: readonly Panel[] = ['bible', 'chronicle', 'lint', 'critic', 'inspector'];
+export const VIEWS: readonly View[] = ['editor', 'bible', 'chronicle', 'plan', 'run', 'settings', 'canvas'];
+export const PANELS: readonly Panel[] = ['bible', 'chronicle', 'lint', 'critic', 'inspector', 'narrator'];
 const THEMES: readonly Theme[] = ['light', 'dark', 'system'];
 
 /** The modifier key as the platform names it, for shortcut hints. */
@@ -38,7 +38,7 @@ export function TopBar() {
       if (event.defaultPrevented || !(event.ctrlKey || event.metaKey) || event.altKey) return;
       const state = useStore.getState();
       if (state.ui.paletteOpen) return;
-      if (!event.shiftKey && /^[1-6]$/.test(event.key)) {
+      if (!event.shiftKey && /^[1-7]$/.test(event.key)) {
         const target = VIEWS[Number(event.key) - 1];
         if (target && state.project.root) {
           event.preventDefault();

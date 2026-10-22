@@ -1,0 +1,90 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/canvas-board.json.schema.json",
+  "title": "canvas-board.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format_version": {
+      "default": 1,
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "template": {
+      "default": "none",
+      "type": "string",
+      "enum": [
+        "none",
+        "three_act",
+        "heros_journey",
+        "save_the_cat",
+        "romancing_the_beat",
+        "kishotenketsu"
+      ]
+    },
+    "cards": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "idea",
+              "scene",
+              "arc",
+              "twist",
+              "branch",
+              "question"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "type": "string"
+          },
+          "x": {
+            "default": 0,
+            "type": "number"
+          },
+          "y": {
+            "default": 0,
+            "type": "number"
+          },
+          "lane": {
+            "type": "string"
+          },
+          "links": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "to"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title"
+        ]
+      }
+    }
+  }
+}

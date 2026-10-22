@@ -1,0 +1,59 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/bible-proposals.schema.json",
+  "title": "bible-proposals",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "proposals": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "character",
+              "location",
+              "faction",
+              "item",
+              "world_rule",
+              "glossary",
+              "timeline"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "create",
+              "update"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "diff": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "slug",
+          "action",
+          "diff"
+        ]
+      }
+    }
+  }
+}

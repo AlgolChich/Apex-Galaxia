@@ -1,0 +1,36 @@
+# A rating is a ceiling, never a target. Hard limits (hard-limits.md) apply at every rating.
+ratings:
+  - id: soft
+    name: { en: Soft, ru: Мягкий }
+    allowed:
+      en: No violence, cruelty or swearing; conflict from adventure, mystery, relationships, feelings; danger yes, harm no.
+      ru: Без насилия, жестокости и мата; конфликт из приключения, тайны, отношений, чувств; опасность есть, вреда нет.
+    prompt_rules: |
+      Rating soft (a ceiling): no violence, cruelty or swearing. Conflict comes from adventure,
+      mystery, relationships and feelings. Danger is allowed; harm is not shown.
+  - id: medium
+    default: true
+    name: { en: Medium, ru: Средний }
+    allowed:
+      en: Minimal violence (scuffles, chases, falls, wounds without detail), no blood; mild swearing.
+      ru: Минимум насилия (потасовки, погони, падения, раны без деталей), без крови; мягкая брань.
+    prompt_rules: |
+      Rating medium (a ceiling): minimal violence such as scuffles, chases, falls and wounds
+      without detail; no blood on the page; mild swearing only.
+  - id: high
+    name: { en: High, ru: Высокий }
+    allowed:
+      en: "Scenes of violence, blood without naturalism, coarse language; sexual scenes without explicit detail: hint, fade, transition."
+      ru: Сцены насилия, кровь без натурализма, грубая речь; сексуальные сцены без откровенных деталей — намёк, затемнение, переход.
+    prompt_rules: |
+      Rating high (a ceiling): scenes of violence and blood without naturalism; coarse language
+      when in character. Sexual scenes without explicit detail: a hint, a fade, a transition.
+  - id: heavy
+    name: { en: Heavy, ru: Тяжёлый }
+    allowed:
+      en: Heavy violence, blood, naturalistic wounds and suffering; explicit scenes between adults within platform rules.
+      ru: Тяжёлое насилие, кровь, натуралистичные раны и страдание; откровенные сцены между взрослыми в рамках правил платформы.
+    prompt_rules: |
+      Rating heavy (a ceiling): heavy violence, blood, naturalistic wounds and suffering when
+      the scene needs them. Explicit scenes between adults within platform rules and the hard
+      limits.

@@ -1,0 +1,33 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/summary.frontmatter.schema.json",
+  "title": "summary.frontmatter",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "chapter": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "source_hash": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "words": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  },
+  "required": [
+    "chapter",
+    "source_hash",
+    "generated_at",
+    "model"
+  ]
+}

@@ -1,0 +1,50 @@
+# Pacing engines (after RimWorld). The planner receives `planner_rules`; prose prompts never
+# see these (Section 10.7).
+storytellers:
+  - id: cassandra
+    default: true
+    name:
+      en: Cassandra Classic
+      ru: Кассандра Классическая
+    rhythm:
+      en: Classic tension curve
+      ru: Классическая кривая напряжения
+    expect:
+      en: Presses with dangerous events, gives a breather, returns stronger; each wave bigger than the last; climax at the end.
+      ru: Давит опасными событиями, даёт передышку, возвращается сильнее; каждая волна больше предыдущей; кульминация в конце.
+    planner_rules: |
+      Cassandra Classic governs the rhythm. Build a classic tension curve: press with a dangerous
+      event, give a breather, return stronger. Each wave is bigger than the last. The climax
+      comes at the end of the story, not in the middle. Never two breathers in a row; never
+      three blows in a row without a beat of daily life.
+  - id: phoebe
+    name:
+      en: Phoebe Chillax
+      ru: Фиби Безмятежная
+    rhythm:
+      en: Long calm stretches
+      ru: Длинные спокойные отрезки
+    expect:
+      en: Daily life, relationships, the world, the heroes' plans; after a heavy blow help often comes (an ally, a trader, a passer-by); at high harshness hits as hard as the others.
+      ru: Быт, отношения, мир, планы героев; после тяжёлого удара часто приходит помощь (союзник, торговец, прохожий); при высокой жёсткости бьёт так же больно, как остальные.
+    planner_rules: |
+      Phoebe Chillax governs the rhythm. Long breathers between blows: daily life, relationships,
+      the world, the heroes' plans. After a heavy blow help often arrives (an ally, a trader, a
+      passer-by), but it comes with its own motives. At high harshness the blows hurt as much as
+      with any other storyteller; only the spacing is kinder.
+  - id: randy
+    name:
+      en: Randy Random
+      ru: Рэнди Случайный
+    rhythm:
+      en: No rules
+      ru: Без правил
+    expect:
+      en: Events of any size at any moment; blows back to back, lulls that drag, luck from nowhere; cares only about drama; random in events, never in logic.
+      ru: События любого размера в любой момент; удары подряд, тянущиеся затишья, удача с неба; его волнует только драма; случайность в событиях, не в логике.
+    planner_rules: |
+      Randy Random governs the rhythm. There are no rules: events of any size at any moment,
+      blows back to back, lulls that drag, luck from nowhere. Only drama matters. Before each
+      major event the harness rolled a real d20 in code; the result is given below and you must
+      obey it. Events are random; logic is not: everything must be possible in this world, and
+      every consequence follows from what happened.

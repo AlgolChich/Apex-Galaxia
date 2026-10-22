@@ -1,0 +1,103 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/user-config.yaml.schema.json",
+  "title": "user-config.yaml",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "ui_language": {
+      "default": "en",
+      "type": "string",
+      "enum": [
+        "ru",
+        "en"
+      ]
+    },
+    "provider": {
+      "default": "anthropic",
+      "type": "string",
+      "enum": [
+        "anthropic",
+        "openai-compatible",
+        "ollama"
+      ]
+    },
+    "base_url": {
+      "type": "string"
+    },
+    "models": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "plan": {
+          "default": "claude-fable-5-1",
+          "type": "string"
+        },
+        "prose": {
+          "default": "claude-opus-5-5",
+          "type": "string"
+        },
+        "critic": {
+          "default": "claude-fable-5-1",
+          "type": "string"
+        },
+        "extract": {
+          "default": "claude-haiku-5-5",
+          "type": "string"
+        },
+        "summary": {
+          "default": "claude-haiku-5-5",
+          "type": "string"
+        },
+        "lint": {
+          "default": "claude-haiku-5-5",
+          "type": "string"
+        }
+      }
+    },
+    "budget": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "context_tokens": {
+          "default": 60000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "project_usd": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "warn_at_usd": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "research_provider": {
+      "default": "none",
+      "type": "string",
+      "enum": [
+        "none",
+        "claude-web"
+      ]
+    }
+  },
+  "additionalProperties": {}
+}

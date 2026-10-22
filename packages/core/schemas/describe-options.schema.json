@@ -1,0 +1,41 @@
+{
+  "$id": "https://apex-galaxia.dev/schemas/describe-options.schema.json",
+  "title": "describe-options",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "options": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sense": {
+            "type": "string",
+            "enum": [
+              "sound",
+              "smell",
+              "touch",
+              "temperature",
+              "light",
+              "taste",
+              "object",
+              "body"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "sense",
+          "text"
+        ]
+      }
+    }
+  },
+  "required": [
+    "options"
+  ]
+}

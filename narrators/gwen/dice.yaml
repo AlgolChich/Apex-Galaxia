@@ -1,0 +1,19 @@
+# Randy's die: rolled in code before each major event, logged in the chronicle (rolls[]).
+die: d20
+outcomes:
+  - range: [1, 4]
+    id: luck
+    en: Unexpected luck
+    ru: Нежданная удача
+  - range: [5, 12]
+    id: lull
+    en: Lull or a minor thing
+    ru: Затишье или мелочь
+  - range: [13, 18]
+    id: trouble
+    en: Serious trouble
+    ru: Серьёзная беда
+  - range: [19, 20]
+    id: catastrophe
+    en: Catastrophe or miracle
+    ru: Катастрофа или чудо

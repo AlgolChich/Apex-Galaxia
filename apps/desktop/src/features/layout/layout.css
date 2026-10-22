@@ -1,0 +1,313 @@
+/* The frame chrome: top bar, status bar, resize handles. Colors and type come from tokens. */
+body.frame-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* ---- top bar ------------------------------------------------------------------------------ */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.3rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+  font-size: 0.875rem;
+}
+
+.topbar__title {
+  flex: 0 1 auto;
+  min-width: 4rem;
+  max-width: 18rem;
+  margin-right: 0.5rem;
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar__group {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.topbar__group + .topbar__group {
+  margin-left: 0.5rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--border);
+}
+
+.topbar__group-label {
+  margin-right: 0.3rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.topbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.topbar__btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.topbar__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.topbar__btn[aria-pressed='true'] {
+  border-color: var(--border);
+  background: var(--bg-sunken);
+  color: var(--fg);
+}
+
+.topbar__btn--tree {
+  padding: 0.35rem 0.5rem;
+}
+
+.topbar__bars {
+  position: relative;
+  display: block;
+  width: 0.9rem;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.topbar__bars::before,
+.topbar__bars::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.topbar__bars::before {
+  top: -5px;
+}
+
+.topbar__bars::after {
+  top: 5px;
+}
+
+.topbar__spacer {
+  flex: 1 1 auto;
+}
+
+.topbar__model {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 13rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--fg-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar__model::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--fg-faint);
+}
+
+.topbar__model--ready::before {
+  background: var(--success);
+}
+
+.topbar__model--scripted::before {
+  background: var(--warning);
+}
+
+.topbar__model--none::before,
+.topbar__model--offline::before {
+  background: var(--danger);
+}
+
+@media (max-width: 100rem) {
+  .topbar__group-label,
+  .topbar__palette-text {
+    display: none;
+  }
+}
+
+@media (max-width: 70rem) {
+  .topbar__title {
+    max-width: 10rem;
+  }
+}
+
+/* ---- status bar --------------------------------------------------------------------------- */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 1.9rem;
+  padding: 0.2rem 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elev);
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.statusbar__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.statusbar__label {
+  color: var(--fg-faint);
+}
+
+.statusbar__spacer {
+  flex: 1 1 auto;
+}
+
+.statusbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.statusbar__btn:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.statusbar__btn[aria-pressed='true'] {
+  color: var(--fg);
+  border-color: var(--border);
+  background: var(--bg-sunken);
+}
+
+.statusbar__dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+}
+
+.statusbar__dot--error {
+  background: var(--danger);
+}
+
+.statusbar__dot--warning {
+  background: var(--warning);
+}
+
+.statusbar__dot--info {
+  background: var(--info);
+}
+
+.statusbar__saving {
+  color: var(--fg-muted);
+}
+
+.statusbar__dirty {
+  color: var(--warning);
+}
+
+.statusbar__saved {
+  color: var(--success);
+}
+
+.statusbar__focus {
+  color: var(--fg-faint);
+}
+
+.statusbar__model--scripted {
+  color: var(--warning);
+}
+
+.statusbar__model--none,
+.statusbar__model--offline {
+  color: var(--danger);
+}
+
+/* ---- resize handles ----------------------------------------------------------------------- */
+.frame-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 7px;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.frame-handle--right {
+  right: 0;
+}
+
+.frame-handle--left {
+  left: 0;
+}
+
+.frame-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.frame-handle--right::after {
+  right: 0;
+}
+
+.frame-handle--left::after {
+  left: 0;
+}
+
+.frame-handle:hover::after,
+.frame-handle:focus-visible::after,
+.frame-handle--active::after {
+  background: var(--accent);
+}
+
+.frame-handle:focus-visible {
+  box-shadow: none;
+  border-radius: 0;
+}

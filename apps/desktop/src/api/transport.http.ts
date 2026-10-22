@@ -10,12 +10,19 @@ export class HttpTransport implements Transport {
   private readonly handlers = new Set<(message: JsonRpcMessage) => void>();
   private readonly resetHandlers = new Set<(status: SidecarStatus) => void>();
   private source: EventSource | undefined;
+  /** Resolves once the event stream is open: a reply sent before that would reach nobody. */
+  private ready: Promise<void> = Promise.resolve();
 
   constructor(private readonly base = 'http://127.0.0.1:4877') {}
 
   private ensureSource(): void {
     if (this.source) return;
-    this.source = new EventSource(`${this.base}/events`);
+    const source = new EventSource(`${this.base}/events`);
+    this.source = source;
+    this.ready = new Promise((resolve) => {
+      source.addEventListener('open', () => resolve(), { once: true });
+      setTimeout(resolve, 3000);
+    });
     this.source.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data as string) as JsonRpcMessage;
@@ -36,6 +43,7 @@ export class HttpTransport implements Transport {
 
   async send(message: JsonRpcMessage): Promise<void> {
     this.ensureSource();
+    await this.ready;
     const response = await fetch(`${this.base}/send`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(message) });
     if (!response.ok) throw new Error(`bridge: ${response.status} ${await response.text()}`);
   }

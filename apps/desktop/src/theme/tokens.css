@@ -11,6 +11,9 @@
   --prose-size: 1.125rem;
   --prose-leading: 1.65;
   --prose-measure: 68ch;
+  --prose-measure-wide: 80ch;
+  --tree-width: 16rem;
+  --panel-width: 22rem;
   --radius: 6px;
   --radius-lg: 10px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);

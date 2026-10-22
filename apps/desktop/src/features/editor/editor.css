@@ -1,0 +1,163 @@
+/* The editor surface. CodeMirror's own look is set in extensions.ts from the tokens; this file
+   holds what lives outside the view (empty state, focus hint) and the lint underline classes. */
+.editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.editor__host {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.editor__host .cm-editor {
+  height: 100%;
+}
+
+/* The page-wide focus ring belongs on controls, not on the prose surface. */
+.editor__host .cm-content:focus-visible,
+.editor__host .cm-editor:focus-visible,
+.editor__host .cm-editor.cm-focused {
+  box-shadow: none;
+  outline: none;
+  border-radius: 0;
+}
+
+/* Typewriter mode: room above the first line so it can sit in the middle too. */
+.editor.editor--typewriter .cm-content {
+  padding-top: 40vh;
+}
+
+/* Focus mode: the chrome is gone (App hides it); let the measure breathe a little. */
+.editor.editor--focus .cm-content {
+  max-width: var(--prose-measure-wide);
+  padding-top: 4rem;
+}
+
+.editor.editor--focus.editor--typewriter .cm-content {
+  padding-top: 40vh;
+}
+
+.editor__focus-hint {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  color: var(--fg-faint);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  animation: editor-hint-fade 4s ease-in forwards;
+}
+
+@keyframes editor-hint-fade {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---- lint underlines --------------------------------------------------------------------- */
+.editor-lint {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.editor-lint--error {
+  text-decoration-color: var(--lint-error);
+}
+
+.editor-lint--warning {
+  text-decoration-color: var(--lint-warning);
+}
+
+.editor-lint--info {
+  text-decoration-color: var(--lint-info);
+}
+
+.editor-lint-tip {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 24rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.editor-lint-tip__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.85em;
+}
+
+.editor-lint-tip__severity {
+  font-weight: 600;
+}
+
+.editor-lint-tip__severity--error {
+  color: var(--danger);
+}
+
+.editor-lint-tip__severity--warning {
+  color: var(--warning);
+}
+
+.editor-lint-tip__severity--info {
+  color: var(--info);
+}
+
+.editor-lint-tip__rule {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--fg-muted);
+}
+
+.editor-lint-tip__message {
+  color: var(--fg);
+}
+
+.editor-lint-tip__action {
+  justify-self: start;
+}
+
+/* ---- empty state --------------------------------------------------------------------------- */
+.editor-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 2rem;
+}
+
+.editor-empty__card {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 32rem;
+  text-align: center;
+  justify-items: center;
+}
+
+.editor-empty__title {
+  margin: 0;
+  font-family: var(--font-prose);
+  font-weight: 500;
+  font-size: 1.5rem;
+  color: var(--fg);
+}
+
+.editor-empty__text {
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}

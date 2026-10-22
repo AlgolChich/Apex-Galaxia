@@ -12,6 +12,7 @@ import {
   defaultUserDir,
   getEntry,
   isApexError,
+  loadNarrator,
   type Harness,
   type ModelAdapter,
   type ProjectStore,
@@ -238,6 +239,69 @@ export function registerAppTools(server: McpServer, ctx: AppContext): void {
           await store.writeYaml(store.layout.plan.chapters, ChaptersPlanSchema, plan);
         }
         return ok({ outline: outline !== undefined, chapters: plan ?? null });
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  // ---- Lint whitelist, voice card, narrator options -----------------------------------------
+  server.registerTool(
+    'lint_whitelist_add',
+    { title: 'Whitelist a phrase for the linter', description: 'Append a phrase to the project\'s style/lint-whitelist.txt so the linter stops flagging it (the Author\'s one-click decision).', inputSchema: { phrase: z.string().min(1), note: z.string().optional() } },
+    async ({ phrase, note }) => {
+      try {
+        const harness = await ctx.getHarness();
+        const file = harness.store.layout.style.whitelist;
+        const current = (await harness.store.readText(file)) ?? '';
+        const line = note ? `${phrase.trim()} | ${note.trim()}` : phrase.trim();
+        if (harness.style.whitelist.some((w) => w.toLowerCase() === phrase.trim().toLowerCase())) return ok({ phrase: phrase.trim(), added: false, file });
+        await harness.store.writeText(file, `${current.trimEnd()}\n${line}\n`.replace(/^\n/, ''));
+        await harness.refresh();
+        return ok({ phrase: phrase.trim(), added: true, file });
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'voice_card',
+    { title: 'Voice card from a sample (model)', description: 'Distill the Author\'s own prose sample into the voice card (style/voice-card.md) the prose prompts carry. Needs a model.', inputSchema: { sample: z.string().min(1), save: z.boolean().optional() } },
+    async ({ sample, save }) => {
+      try {
+        const harness = await ctx.getHarness();
+        const { card, run } = await harness.voiceCard(sample);
+        let file: string | null = null;
+        if (save !== false) {
+          file = harness.store.layout.style.voiceCard;
+          await harness.store.writeText(file, card.trimEnd() + '\n');
+          await harness.refresh();
+        }
+        return ok({ card, file, costUsd: run.result.costUsd, model: run.result.model }, card);
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'narrator_options',
+    { title: 'Narrator options', description: 'The storytellers, harshness levels, ratings and length classes of a narrator profile with their bilingual names and one-line explanations, for wizards and settings. No project needed.', inputSchema: { narrator: z.string().optional() } },
+    async ({ narrator }) => {
+      try {
+        const profile = await loadNarrator(await ctx.getResources(), narrator ?? 'gwen');
+        return ok({
+          name: profile.name,
+          display_name: profile.displayName,
+          defaults: profile.defaults,
+          storytellers: profile.storytellers.map((s) => ({ id: s.id, name: s.name, rhythm: s.rhythm, expect: s.expect, default: s.default ?? false })),
+          harshness: profile.harshness.map((h) => ({ level: h.level, name: h.name, allowed: h.allowed, default: h.default ?? false })),
+          ratings: profile.ratings.map((r) => ({ id: r.id, name: r.name, allowed: r.allowed, default: r.default ?? false })),
+          lengths: profile.lengths.map((l) => ({ id: l.id, name: l.name, pages: l.pages, words: l.words, chapters: l.chapters, plan_approval: l.plan_approval, default: l.default ?? false })),
+          chapter_words: profile.chapterWords,
+          brief_template: profile.briefTemplate,
+        });
       } catch (error) {
         return fail(error);
       }

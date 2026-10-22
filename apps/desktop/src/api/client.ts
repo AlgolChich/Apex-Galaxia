@@ -22,6 +22,7 @@ import type {
   LessonProposal,
   LintReport,
   ModelStatus,
+  NarratorOptions,
   PlanFiles,
   PlannedChapter,
   PreparedTask,
@@ -241,6 +242,18 @@ export class ApexClient {
 
   exportBook(format: 'md' | 'docx' | 'epub', options: { out?: string; author?: string } = {}): Promise<{ file: string; words?: number; chapters?: number }> {
     return this.call('export_book', { format, ...options });
+  }
+
+  lintWhitelistAdd(phrase: string, note?: string): Promise<{ phrase: string; added: boolean; file: string }> {
+    return this.call('lint_whitelist_add', { phrase, ...(note ? { note } : {}) });
+  }
+
+  voiceCard(sample: string, save = true): Promise<{ card: string; file: string | null; costUsd: number; model: string }> {
+    return this.call('voice_card', { sample, save });
+  }
+
+  narratorOptions(narrator?: string): Promise<NarratorOptions> {
+    return this.call('narrator_options', narrator ? { narrator } : {});
   }
 
   // ---- Plan and runs -----------------------------------------------------------------

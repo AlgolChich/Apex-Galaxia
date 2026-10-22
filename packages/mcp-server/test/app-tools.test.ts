@@ -114,6 +114,27 @@ describe('app tools over stdio (scripted model)', () => {
     expect(await fs.readFile(path.join(dir, 'home', 'config.yaml'), 'utf8')).not.toContain('sk-nope');
   });
 
+  it('whitelists a lint phrase, explains the narrator options and distills a voice card', async () => {
+    const options = structured(await client.callTool({ name: 'narrator_options', arguments: {} }));
+    expect((options['storytellers'] as Array<{ id: string }>).map((s) => s.id)).toEqual(['cassandra', 'phoebe', 'randy']);
+    expect((options['harshness'] as unknown[]).length).toBe(6);
+    expect((options['lengths'] as Array<{ id: string; plan_approval: boolean }>).find((l) => l.id === 'long')?.plan_approval).toBe(true);
+    expect(options['brief_template']).toContain('Universe');
+
+    const before = structured(await client.callTool({ name: 'lint', arguments: { text: 'По спине пробежал холодок.' } }));
+    expect((before['hits'] as unknown[]).length).toBeGreaterThan(0);
+    const added = structured(await client.callTool({ name: 'lint_whitelist_add', arguments: { phrase: 'по спине пробежал холодок', note: 'the Author likes it here' } }));
+    expect(added['added']).toBe(true);
+    const again = structured(await client.callTool({ name: 'lint_whitelist_add', arguments: { phrase: 'По спине пробежал холодок' } }));
+    expect(again['added']).toBe(false);
+    const after = structured(await client.callTool({ name: 'lint', arguments: { text: 'По спине пробежал холодок.' } }));
+    expect((after['hits'] as Array<{ rule: string }>).filter((h) => h.rule === 'banned-phrase')).toEqual([]);
+
+    const card = structured(await client.callTool({ name: 'voice_card', arguments: { sample: 'Она села. Сказала: ладно.' } }));
+    expect(card['card']).toContain('голоса');
+    expect(await fs.readFile(card['file'] as string, 'utf8')).toContain('голоса');
+  });
+
   it('streams write output as progress notifications and accepts an edited suggestion', async () => {
     const deltas: string[] = [];
     const result = await client.callTool({ name: 'write_continue', arguments: { chapter: 1, target_words: 200 } }, undefined, {

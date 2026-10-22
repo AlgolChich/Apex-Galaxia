@@ -383,3 +383,21 @@ export interface SubmitResult {
   outcome?: unknown;
   callId: string;
 }
+
+export interface Bilingual {
+  en: string;
+  ru: string;
+}
+
+/** What `narrator_options` returns: everything a wizard or a settings form explains. */
+export interface NarratorOptions {
+  name: string;
+  display_name: Bilingual;
+  defaults: { storyteller: Storyteller; harshness: number; rating: Rating; length: LengthClass; pov: 'first' | 'third'; tense: 'past' | 'present'; cliffhangers: 'none' | 'chapters' | 'chapters_and_finale'; original_characters: 'no' | 'yes' | 'narrator'; ending: 'happy' | 'bittersweet' | 'tragic' | 'open' | 'narrator' };
+  storytellers: Array<{ id: Storyteller; name: Bilingual; rhythm: Bilingual; expect: Bilingual; default: boolean }>;
+  harshness: Array<{ level: number; name: Bilingual; allowed: Bilingual; default: boolean }>;
+  ratings: Array<{ id: Rating; name: Bilingual; allowed: Bilingual; default: boolean }>;
+  lengths: Array<{ id: LengthClass; name: Bilingual; pages: [number, number]; words: [number, number]; chapters: [number, number]; plan_approval: boolean; default: boolean }>;
+  chapter_words: { min: number; max: number };
+  brief_template: string;
+}

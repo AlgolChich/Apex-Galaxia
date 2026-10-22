@@ -23,7 +23,7 @@ Several Phase 5 items that live next to these are pulled in (pairwise A/B, the c
 - [x] Gwen's chat panel with the Park Planet accent, command chips, action cards (next, plan, chronicle, directions, settings) and per-project history (`features/chat`, history in local storage per project root; a canned reply with the action when no model is configured).
 - [x] Run screen: the decision card for `awaiting_decision` (approve and continue, edit the plan, stop); a gate is shown as a pause, not a finished run; saved runs at the gate carry a Decide button.
 - [x] Candidates dialog: side-by-side comparison, the critic's pick, choose or tie, the A/B record, the chronicle offer after the accept (`features/candidates`; a tie records `tie` and keeps the critic's pick so the Author has a continuation).
-- [ ] Canvas as a pannable, zoomable board with lanes, links, drag, AI actions and promotion.
+- [x] Canvas as a pannable, zoomable board with lanes, links, drag, AI actions and promotion (`features/canvas`: viewport in a ref with the transform written imperatively, one SVG for the links, proposals reach the board only on Add; `canvas_add` takes a position, the canvas model tools report model and cost).
 - [x] Import dialog (manuscript, Bible entries, research dossier), the wizard's import path, the welcome screen button, the evals section in Settings (`features/import`, `settings/evals.tsx`).
 
 ## Acceptance evidence

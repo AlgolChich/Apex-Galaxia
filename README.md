@@ -29,13 +29,15 @@ bounded revision loop. Nothing here is a custom model.
 
 ## Status
 
-Phases 0–3 of the build plan are done: core, CLI, headless mode and the desktop app
+Phases 0–4 of the build plan are done: core, CLI, headless mode, the desktop app
 (`apps/desktop`: Tauri 2 shell, a CodeMirror prose editor, panels, palette, suggestion block,
-diffs, wizards, views; installers built in CI, `docs/desktop.md`). From Phases 4–5 the core
-pieces exist and are tested offline: the Muse Layer critic loop, autonomous runs with resume,
-lesson capture, the eval suite, `/improve` and the canvas (cards, lanes, promotion, AI actions);
-from Phase 6, exports to Markdown, DOCX and EPUB. Not built yet: the narrator's chat panel
-(Phase 4), the pannable board and the pairwise A/B (Phase 5). See `docs/plans/` and `docs/reports/`.
+diffs, wizards, views; installers built in CI, `docs/desktop.md`) and the narrator system in the
+app: Gwen's chat panel, the ASK gate for irreversible choices, 2–3 Write candidates with the
+pairwise A/B record, planner evals, manuscript and Bible import, the canvas board. From Phase 5
+the core pieces exist and are tested offline: the Muse Layer critic loop, autonomous runs with
+resume, lesson capture, the eval suite and `/improve`; from Phase 6, exports to Markdown, DOCX and
+EPUB. Releases are built by the `Release` workflow on version tags (`docs/release.md`). See
+`docs/plans/` and `docs/reports/`.
 
 ## Run it
 

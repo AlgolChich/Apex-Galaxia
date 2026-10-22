@@ -36,7 +36,7 @@ import { loadStyleMemory, type StyleMemory } from '../style/memory.js';
 import { ModelRegistry } from '../adapters/models.js';
 import { generateLogged, type LoggedResult } from '../adapters/logged.js';
 import { estimateCost, type GenerateOptions, type ModelAdapter } from '../adapters/types.js';
-import { formatLintReport, lintText, type LintReport } from '../lint/index.js';
+import { formatLintReport, lintText, normalizeRussianDialogue, type LintReport } from '../lint/index.js';
 import { enforceJsonContract, enforceProseContract } from './contracts.js';
 import { diffParagraphs, type DiffBlock } from './diff.js';
 
@@ -391,8 +391,16 @@ export class Harness {
     return out;
   }
 
-  private async finishWrite(prepared: Omit<Prepared, 'handle' | 'assembled' | 'estimate'>, text: string, meta: { model: string; callId: string; costUsd: number; warnings: string[] }): Promise<{ suggestion: SuggestionFile; lint: LintReport }> {
+  /** Russian prose passes the punctuation normalizer before it is shown (Section 4.1). */
+  private normalize(text: string): { text: string; changes: string[] } {
+    if (this.language !== 'ru') return { text, changes: [] };
+    return normalizeRussianDialogue(text);
+  }
+
+  private async finishWrite(prepared: Omit<Prepared, 'handle' | 'assembled' | 'estimate'>, raw: string, meta: { model: string; callId: string; costUsd: number; warnings: string[] }): Promise<{ suggestion: SuggestionFile; lint: LintReport; text: string }> {
+    const { text, changes } = this.normalize(raw);
     const lint = this.lint(text);
+    const notes = [...meta.warnings, ...(changes.length > 0 ? [`punctuation normalized: ${changes.join('; ')}`] : [])];
     const suggestion = await this.store.writeSuggestion(
       {
         task: prepared.task,
@@ -402,11 +410,11 @@ export class Harness {
         ...(prepared.chapterNumber !== undefined ? { chapter: prepared.chapterNumber } : {}),
         ...(prepared.title !== undefined ? { title: prepared.title } : {}),
         ...(prepared.cursor !== undefined && prepared.task !== 'write.chapter' ? { anchor: prepared.cursor } : {}),
-        ...(meta.warnings.length > 0 ? { note: meta.warnings.join(' | ') } : {}),
+        ...(notes.length > 0 ? { note: notes.join(' | ') } : {}),
       },
       text,
     );
-    return { suggestion, lint };
+    return { suggestion, lint, text };
   }
 
   async write(mode: WriteMode, params: WriteParams = {}): Promise<WriteOutcome> {
@@ -416,8 +424,8 @@ export class Harness {
       ...(prepared.expectHeading ? { expectHeading: prepared.expectHeading } : {}),
       maxTokens: mode === 'chapter' ? 8_000 : 4_000,
     });
-    const { suggestion, lint } = await this.finishWrite(prepared, run.text, { model: run.result.model, callId: run.result.callId, costUsd: run.result.costUsd, warnings: run.warnings });
-    return { mode, suggestion, text: run.text, lint, run, costUsd: run.result.costUsd, model: run.result.model };
+    const { suggestion, lint, text } = await this.finishWrite(prepared, run.text, { model: run.result.model, callId: run.result.callId, costUsd: run.result.costUsd, warnings: run.warnings });
+    return { mode, suggestion, text, lint, run, costUsd: run.result.costUsd, model: run.result.model };
   }
 
   // -------------------------------------------------------------------------
@@ -577,9 +585,10 @@ export class Harness {
     if (violations.length > 0) return result;
 
     if (prepared.task.startsWith('write.')) {
-      const { suggestion, lint } = await this.finishWrite(prepared, text, { model: provider, callId, costUsd: 0, warnings: [] });
-      result.suggestion = suggestion;
-      result.lint = lint;
+      const finished = await this.finishWrite(prepared, text, { model: provider, callId, costUsd: 0, warnings: [] });
+      result.suggestion = finished.suggestion;
+      result.lint = finished.lint;
+      result.text = finished.text;
     } else if (prepared.task === 'plan.chapter') {
       const sheet = BeatSheetSchema.parse({ ...(json as object), chapter: prepared.chapterNumber, ...(prepared.title ? { title: prepared.title } : {}) });
       await this.storeBeatSheet(sheet);

@@ -5,6 +5,7 @@ import type { LintContext, LintHit, LintOptions, LintReport, LintRule, LintSever
 export * from './types.js';
 export { ALL_RULES } from './rules.js';
 export { phrasePattern, paragraphsOf, sentencesOf } from './text.js';
+export * from './punctuation.js';
 
 /**
  * Tier-one AI-tell linter: deterministic, instant, free. Hits carry offsets for underlining,

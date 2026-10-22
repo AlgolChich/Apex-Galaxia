@@ -31,3 +31,4 @@ export * from './adapters/none.js';
 export * from './write/muse.js';
 export * from './evals/runner.js';
 export * from './evals/improve.js';
+export * from './export/book.js';

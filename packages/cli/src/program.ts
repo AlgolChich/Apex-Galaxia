@@ -10,6 +10,7 @@ import {
   countWords,
   createProject,
   entryTemplate,
+  exportBook,
   formatDiff,
   formatEvalReport,
   formatInspector,
@@ -29,6 +30,7 @@ import {
   ProjectStore,
   type CreateProjectOptions,
   type EntryKind,
+  type ExportFormat,
   type Language,
   type LessonCategory,
   type WriteMode,
@@ -795,23 +797,36 @@ export function buildProgram(): Command {
 
   program
     .command('export [dir]')
-    .description('export the manuscript: --format md (docx and epub come in Phase 6)')
-    .option('--format <fmt>', 'md', 'md')
+    .description('export the manuscript: --format md | docx | epub')
+    .option('--format <fmt>', 'md | docx | epub', 'md')
     .option('--out <file>')
-    .action(async (dir: string | undefined, opts: { format?: string; out?: string }, cmd: Command) => {
+    .option('--author <name>', 'author name for the document metadata')
+    .action(async (dir: string | undefined, opts: { format?: string; out?: string; author?: string }, cmd: Command) => {
       try {
         const ctx = await cliContext(globals(cmd), dir);
-        if (opts.format !== 'md') throw new Error(`Format ${opts.format} is not available yet; use md`);
+        const format = opts.format ?? 'md';
+        if (!['md', 'docx', 'epub'].includes(format)) throw new Error(`Unknown format ${format}; use md, docx or epub`);
         const store = await ProjectStore.open(ctx.root);
-        const chapters = await store.listChapters();
-        const parts = [`# ${store.config.title}`, ''];
-        for (const ch of chapters) {
-          parts.push(`## ${chapterHeading(store.config.language, ch.front.number, ch.front.title)}`, '', ch.body.trim(), '');
-        }
-        const file = opts.out ? path.resolve(opts.out) : path.join(store.layout.exports, `${slugify(store.config.title)}.md`);
-        await fs.mkdir(path.dirname(file), { recursive: true });
-        await fs.writeFile(file, parts.join('\n') + '\n', 'utf8');
-        out(ctx, { file, chapters: chapters.length }, () => `${ctx.t('exported')} ${file}`);
+        const result = await exportBook(store, format as ExportFormat, opts.out ? path.resolve(opts.out) : undefined, opts.author);
+        out(ctx, result, () => `${ctx.t('exported')} ${result.file} (${result.chapters} ${ctx.t('chapters').toLowerCase()}, ${result.words} ${ctx.t('words')})`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('weave [dir]')
+    .description('weave a chosen Describe option into a paragraph; shown as a diff (model)')
+    .requiredOption('--text <paragraph>')
+    .requiredOption('--detail <sentence>')
+    .action(async (dir: string | undefined, opts: { text: string; detail: string }, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const ctx = await cliContext(g, dir);
+        const { harness } = await openHarness(ctx, g);
+        const result = await harness.weave(opts.text, opts.detail);
+        out(ctx, { text: result.text, diff: result.diff, lint: result.lint }, () => `${formatDiff(result.diff)}\n\n${formatLintReport(result.lint, ctx.ui)}`);
       } catch (error) {
         printError(error);
         process.exitCode = 1;

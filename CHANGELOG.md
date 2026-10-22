@@ -25,5 +25,6 @@ versions follow semantic versioning once v1.0.0 is tagged.
 - Autonomous runs (`apex run`): chapter-by-chapter plan, write, accept, chronicle, summary, export and reader's report; resumable state; outline gate for long stories; budget pause.
 - Lesson capture from edits (`apex lesson`, `apex accept --edited --lesson`, MCP `lessons_propose` / `lessons_add`).
 - Eval suite (`apex eval`, MCP `eval_run`) and `/improve` (`apex improve`): variants, baselines, deltas, proposals that are never auto-applied.
+- Exports to Markdown, DOCX and EPUB 3 (`apex export --format`, MCP `export_book`); Weave for Describe options (`apex weave`, MCP `weave`).
 - Two sample projects (Russian and English); CI for Ubuntu, Windows and macOS.
 - Documentation: competitive analysis, ADRs, attribution, architecture, project format, prompts, harness mode.

@@ -10,6 +10,7 @@ import {
   appendLesson,
   createProject,
   entryTemplate,
+  exportBook,
   formatEvalReport,
   formatInspector,
   formatLintReport,
@@ -745,6 +746,34 @@ export class ApexMcpServer {
           const store = await this.getStore();
           const saved = await saveResearch(store, markdown, topic);
           return ok({ path: saved.path, topic: saved.topic, sources: saved.front.sources.length, unconfirmed: saved.front.unconfirmed, removed: saved.removed });
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    );
+
+    s.registerTool(
+      'export_book',
+      { title: 'Export the manuscript', description: 'Write the book to exports/ as Markdown, DOCX or EPUB.', inputSchema: { format: z.enum(['md', 'docx', 'epub']).optional(), out: z.string().optional(), author: z.string().optional() } },
+      async ({ format, out: outFile, author }) => {
+        try {
+          const store = await this.getStore();
+          const result = await exportBook(store, format ?? 'md', outFile ? path.resolve(outFile) : undefined, author);
+          return ok(result);
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    );
+
+    s.registerTool(
+      'weave',
+      { title: 'Weave (model)', description: 'Insert a chosen Describe option into a paragraph; returns the text and a paragraph diff.', inputSchema: { paragraph: z.string(), detail: z.string() } },
+      async ({ paragraph, detail }) => {
+        try {
+          const harness = await this.getHarness();
+          const result = await harness.weave(paragraph, detail);
+          return ok({ text: result.text, diff: result.diff, lint: result.lint }, result.text);
         } catch (error) {
           return fail(error);
         }

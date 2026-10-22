@@ -828,6 +828,12 @@ export class Harness {
     return { text: run.text, diff: diffParagraphs(passage, run.text), lint: this.lint(run.text), run };
   }
 
+  /** Weave a chosen Describe option into a paragraph; returned as a diff, never applied (Section 4.3). */
+  async weave(paragraph: string, detail: string, chapter?: ChapterFile): Promise<{ text: string; diff: DiffBlock[]; lint: LintReport; run: TaskRun }> {
+    const run = await this.runTask({ task: 'weave', selection: paragraph, ...(chapter ? { chapter } : {}), vars: { passage: paragraph, detail } }, { maxTokens: 2_000 });
+    return { text: run.text, diff: diffParagraphs(paragraph, run.text), lint: this.lint(run.text), run };
+  }
+
   async lessonFromEdit(before: string, after: string, note = ''): Promise<{ proposal: LessonProposal; run: TaskRun<LessonProposal> }> {
     const existing = this.style.lessons.map((l) => `- ${l.id} [${l.category}] ${l.rule}`).join('\n');
     const run = await this.runTask<LessonProposal>({ task: 'lesson.extract', vars: { before, after, note, existing_lessons: existing || '(none)' } });

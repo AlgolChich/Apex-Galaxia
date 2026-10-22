@@ -51,7 +51,7 @@ Project: `project_open`, `project_create`, `project_chapters`, `chapter_get`. Bi
 (model). Quality: `lint`, `critic_review` (model), `check_bible` (model), `inspect`. Craft:
 `describe` (model), `rewrite` (model), `canvas_directions` (model), `lessons_propose` (model),
 `lessons_add`, `research_save`, `eval_run`, `export_book`, `weave` (model). Canvas: `canvas_get`,
-`canvas_add`, `canvas_link`, `canvas_remove`, `canvas_template`, `canvas_promote`, `canvas_outline`,
+`canvas_add`, `canvas_update`, `canvas_link`, `canvas_remove`, `canvas_template`, `canvas_promote`, `canvas_outline`,
 `canvas_ai` (model). App (used by the desktop, usable from Claude Code too): `model_status`,
 `chapter_save` (the Author's own edit), `chapter_create`, `project_settings_update`,
 `user_config_get`, `user_config_set`, `bible_list`, `bible_remove`, `plan_get`, `plan_save`,

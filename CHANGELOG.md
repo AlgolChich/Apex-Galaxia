@@ -20,5 +20,10 @@ versions follow semantic versioning once v1.0.0 is tagged.
 - Anthropic adapter on the official SDK (streaming, caching, effort, structured outputs, exact token counts, optional refusal fallback); record-and-replay adapter; NoModel adapter.
 - `apex` CLI: new, open, write, accept, discard, suggestions, lint, lint-rules, plan, chronicle, summarize, check-bible, critic, describe, rewrite, directions, bible add/list/extract, inspect, export (md).
 - MCP server over stdio with tools, resources and prompts; `.mcp.json`, `CLAUDE.md`, six skills, four subagents, a lint-on-save hook; an integration test over stdio.
+- Russian dialogue punctuation normalizer applied before a suggestion is shown.
+- Muse Layer: presets fast / balanced / best, critic pass, bounded revision loop on quoted spans, stages recorded.
+- Autonomous runs (`apex run`): chapter-by-chapter plan, write, accept, chronicle, summary, export and reader's report; resumable state; outline gate for long stories; budget pause.
+- Lesson capture from edits (`apex lesson`, `apex accept --edited --lesson`, MCP `lessons_propose` / `lessons_add`).
+- Eval suite (`apex eval`, MCP `eval_run`) and `/improve` (`apex improve`): variants, baselines, deltas, proposals that are never auto-applied.
 - Two sample projects (Russian and English); CI for Ubuntu, Windows and macOS.
 - Documentation: competitive analysis, ADRs, attribution, architecture, project format, prompts, harness mode.

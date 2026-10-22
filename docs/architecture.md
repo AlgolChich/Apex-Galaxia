@@ -39,6 +39,24 @@ CLI (apex new · write · lint · chronicle …) ──────────�
 
 Planning runs before chapter writes: the planner prompt receives the storyteller rhythm, the harshness definition and, for Randy, the d20 rolled in code and logged in the chronicle; it returns a beat sheet (JSON) that the writer follows. Prose prompts never see pacing rules (Section 10.7).
 
+## The Muse Layer and autonomous runs
+
+After a prose draft, `Harness.museLoop` runs the critic (a different model role) and, while the
+verdict is `revise` or `reject` and a score is below the preset's minimum, a `revise` pass that
+may change only the quoted spans; at most two passes (`best`), one (`balanced`), none (`fast`).
+`Harness.runBook` chains plan → write (with the loop) → accept → chronicle (applied with the
+diff log) → summary for each chapter, saves its state after every stage under `history/runs/`,
+stops for outline approval on long stories, pauses on the budget, and ends with the Markdown
+book and a reader's report. `Harness.prepare` / `submit` give a client without a key the same
+contract, lint and suggestion pipeline on its own output.
+
+## Evals and /improve
+
+`evals/runner.ts` scores the golden and fault sets (lint coverage, critic means) in scratch
+projects per language, optionally with a prompt variant directory; `evals/improve.ts` asks the
+planning model for at most three whole-file edits, writes them as a variant, re-runs the suite
+and reports the delta. Nothing is applied by code.
+
 ## Headless mode
 
 `Harness.prepare(task)` returns the assembled prompt and a handle; `Harness.submit(prepared, output)` runs steps 4–6 on output the client produced. The MCP server exposes both as `task_prepare` and `task_submit`. ADR 0007.

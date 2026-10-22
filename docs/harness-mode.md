@@ -28,7 +28,7 @@ prepare/submit flow Claude Code is the model. With `ANTHROPIC_API_KEY` set (envi
 | `/check-bible [folder] <n> [--extract]` | contradictions against the Bible and chronicle; extraction of new entries |
 | `/research-lore [folder] <topic> [canon point]` | research with web tools in order of trust; save a dossier with provenance |
 
-`/improve` (Section 6.7) is not shipped yet: it needs the eval suite of Phase 5.
+| `/improve [--no-critic]` | run the eval suite, propose up to three template or rule edits as a variant, re-run, show the delta; never applies |
 
 ## Subagents
 
@@ -50,7 +50,7 @@ Project: `project_open`, `project_create`, `project_chapters`, `chapter_get`. Bi
 `write_continue` (model), `write_chapter` (model), `plan_chapter` (model), `summarize_chapter`
 (model). Quality: `lint`, `critic_review` (model), `check_bible` (model), `inspect`. Craft:
 `describe` (model), `rewrite` (model), `canvas_directions` (model), `lessons_propose` (model),
-`lessons_add`, `research_save`. Resources: `apex://project/config`, `apex://project/chronicle/state`,
+`lessons_add`, `research_save`, `eval_run`. Resources: `apex://project/config`, `apex://project/chronicle/state`,
 `apex://project/chronicle/log`, `apex://project/brief`, `apex://project/chapters/{stem}`,
 `apex://project/bible/{kind}/{slug}`, `apex://prompts/{task}`. Prompts: `brief`, `handover`.
 

@@ -10,6 +10,7 @@ import {
   appendLesson,
   createProject,
   entryTemplate,
+  formatEvalReport,
   formatInspector,
   formatLintReport,
   getEntry,
@@ -19,6 +20,7 @@ import {
   parseFrontMatter,
   renderBeatSheet,
   resolveResources,
+  runEvalSuite,
   saveResearch,
   upsertEntry,
   ENTRY_KINDS,
@@ -743,6 +745,25 @@ export class ApexMcpServer {
           const store = await this.getStore();
           const saved = await saveResearch(store, markdown, topic);
           return ok({ path: saved.path, topic: saved.topic, sources: saved.front.sources.length, unconfirmed: saved.front.unconfirmed, removed: saved.removed });
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    );
+
+    s.registerTool(
+      'eval_run',
+      { title: 'Run the eval suite', description: 'Linter coverage on the fault set and, with critic=true and an API key, critic scores on the golden and fault sets. Returns the results and the Markdown report (Section 6.5).', inputSchema: { critic: z.boolean().optional(), golden_dir: z.string().optional(), variant_dir: z.string().optional() } },
+      async ({ critic, golden_dir, variant_dir }) => {
+        try {
+          const results = await runEvalSuite({
+            adapter: await this.getAdapter(),
+            resources: await this.getResources(),
+            critic: critic ?? false,
+            ...(golden_dir ? { goldenDir: path.resolve(golden_dir) } : {}),
+            ...(variant_dir ? { variantDir: path.resolve(variant_dir) } : {}),
+          });
+          return ok({ results, report: formatEvalReport(results) }, formatEvalReport(results));
         } catch (error) {
           return fail(error);
         }

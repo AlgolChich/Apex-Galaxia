@@ -29,3 +29,5 @@ export * from './write/harness.js';
 export * from './research/save.js';
 export * from './adapters/none.js';
 export * from './write/muse.js';
+export * from './evals/runner.js';
+export * from './evals/improve.js';

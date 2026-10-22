@@ -3,6 +3,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import {
   ALL_RULES,
+  EvalResultsSchema,
   appendLesson,
   applyDiff,
   chapterHeading,
@@ -10,8 +11,10 @@ import {
   createProject,
   entryTemplate,
   formatDiff,
+  formatEvalReport,
   formatInspector,
   formatLintReport,
+  improveHarness,
   lintText,
   loadBible,
   loadStyleMemory,
@@ -20,6 +23,7 @@ import {
   parseFrontMatter,
   renderBeatSheet,
   resolveResources,
+  runEvalSuite,
   slugify,
   upsertEntry,
   ProjectStore,
@@ -29,6 +33,7 @@ import {
   type LessonCategory,
   type WriteMode,
 } from '@apex-galaxia/core';
+import { createAdapter } from '@apex-galaxia/adapters';
 import { cliContext, openHarness, out, printError, type GlobalOptions } from './context.js';
 import { makeT } from './i18n.js';
 
@@ -327,6 +332,71 @@ export function buildProgram(): Command {
         });
         out(ctx, state, () => `run ${state.id}: ${state.status} · chapters ${state.completed.length}/${state.target_chapters} · $${state.cost_usd.toFixed(3)}${state.error ? `\n${state.error}` : ''}${state.status === 'awaiting_outline_approval' ? `\nReview plan/outline.md, then: apex run --resume ${state.id} --approve-outline` : ''}`);
         if (state.status === 'failed' || state.status === 'paused') process.exitCode = 1;
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('eval')
+    .description('run the eval suite: linter coverage on the fault set and critic scores on the golden and fault sets; writes docs/evals/<date>-<variant>.md')
+    .option('--golden <dir>', 'golden set folder (default evals/golden)')
+    .option('--fault <dir>', 'fault set folder (default evals/fault-set)')
+    .option('--variant <dir>', 'a folder whose prompts/ and style/ override the shipped ones')
+    .option('--baseline <results.json>', 'earlier results to compare against')
+    .option('--no-critic', 'lint only (no model calls)')
+    .option('--out <dir>', 'where to write the report and results (default docs/evals)')
+    .action(async (opts: { golden?: string; fault?: string; variant?: string; baseline?: string; critic?: boolean; out?: string }, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const resources = await resolveResources();
+        const { adapter } = await createAdapter({ ...(g.cassette ? { cassette: g.cassette } : {}) });
+        const results = await runEvalSuite({
+          adapter,
+          resources,
+          ...(opts.golden ? { goldenDir: path.resolve(opts.golden) } : {}),
+          ...(opts.fault ? { faultDir: path.resolve(opts.fault) } : {}),
+          ...(opts.variant ? { variantDir: path.resolve(opts.variant) } : {}),
+          critic: opts.critic !== false,
+          onProgress: (m) => {
+            if (!g.json) console.log(m);
+          },
+        });
+        const baseline = opts.baseline ? EvalResultsSchema.parse(JSON.parse(await fs.readFile(path.resolve(opts.baseline), 'utf8'))) : undefined;
+        const report = formatEvalReport(results, baseline);
+        const outDir = opts.out ? path.resolve(opts.out) : path.join(resources.root, 'docs', 'evals');
+        await fs.mkdir(outDir, { recursive: true });
+        const stem = `${results.ran_at.slice(0, 10)}-${results.variant}`;
+        await fs.writeFile(path.join(outDir, `${stem}.md`), report, 'utf8');
+        await fs.writeFile(path.join(outDir, `${stem}.json`), JSON.stringify(results, null, 2) + '\n', 'utf8');
+        out({ json: Boolean(g.json) }, results, () => `${report}\nwritten: ${path.join(outDir, `${stem}.md`)}`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('improve')
+    .description('run the eval suite, ask the planning model for up to three template or rule edits, re-run with them as a variant and show the delta; nothing is applied')
+    .option('--out <dir>', 'where the proposal is written (default evals/proposals/<stamp>)')
+    .option('--no-critic', 'lint only')
+    .action(async (opts: { out?: string; critic?: boolean }, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const resources = await resolveResources();
+        const { adapter } = await createAdapter({ ...(g.cassette ? { cassette: g.cassette } : {}) });
+        const outcome = await improveHarness({
+          adapter,
+          resources,
+          ...(opts.out ? { outDir: path.resolve(opts.out) } : {}),
+          critic: opts.critic !== false,
+          onProgress: (m) => {
+            if (!g.json) console.log(m);
+          },
+        });
+        out({ json: Boolean(g.json) }, { proposals: outcome.proposals, variantDir: outcome.variantDir, reportFile: outcome.reportFile, summary: outcome.variant.summary }, () => outcome.report);
       } catch (error) {
         printError(error);
         process.exitCode = 1;

@@ -546,6 +546,20 @@ export const DirectionsSchema = z.object({
 });
 export type Directions = z.infer<typeof DirectionsSchema>;
 
+/** Output of the /improve task: whole-file replacements proposed, never applied (Section 6.7). */
+export const ImproveProposalsSchema = z.object({
+  proposals: z
+    .array(
+      z.object({
+        file: z.string().min(1),
+        rationale: z.string().min(1),
+        content: z.string().min(1),
+      }),
+    )
+    .max(3),
+});
+export type ImproveProposals = z.infer<typeof ImproveProposalsSchema>;
+
 export const LessonProposalSchema = z.object({
   category: LessonCategorySchema,
   rule: z.string(),
@@ -595,6 +609,7 @@ export const SCHEMA_REGISTRY = {
   'describe-options': DescribeOptionsSchema,
   'directions': DirectionsSchema,
   'lesson-proposal': LessonProposalSchema,
+  'improve-proposals': ImproveProposalsSchema,
   'user-config.yaml': UserConfigSchema,
 } as const;
 

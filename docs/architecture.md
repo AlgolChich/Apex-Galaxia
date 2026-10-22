@@ -4,7 +4,7 @@ One TypeScript core serves three clients; every model call goes through one adap
 every story is a folder of plain files.
 
 ```
-Desktop app (Tauri 2 + React, Phase 3) ──in-process──┐
+Desktop app (Tauri 2 + React) ──Node sidecar, stdio──► MCP server ──┐
 Claude Code (CLAUDE.md · skills · agents) ──► MCP server (stdio) ──┤
 CLI (apex new · write · lint · chronicle …) ───────────────────────┤
                                                                    ▼
@@ -26,7 +26,8 @@ CLI (apex new · write · lint · chronicle …) ──────────�
 | `@apex-galaxia/core` | All logic. `project/` (layout, schemas, store, migrations, scaffold), `bible/` (entries, activation), `chronicle/` (state ops, log, handover), `narrator/` (profile loader, dice), `style/` (house rules, lessons, banned phrases), `prompts/` (template library), `context/` (token counting, assembler, inspector), `lint/` (rules, runner), `write/` (contracts, diff, harness), `adapters/` (interface, registry, logging, NoModel), `research/` (dossier sanitizer). |
 | `@apex-galaxia/adapters` | `AnthropicAdapter` on the official SDK; `ReplayAdapter` (record and replay by prompt hash); `createAdapter()` resolves keys from the environment or `~/.apex-galaxia/.env`, never from a repository. |
 | `@apex-galaxia/cli` | The `apex` command (commander). Thin: every command is a few lines over the harness. |
-| `@apex-galaxia/mcp-server` | MCP server over stdio: tools, resources and prompts over the same harness; the prepare/submit pair lets the client be the model. |
+| `@apex-galaxia/mcp-server` | MCP server over stdio: tools, resources and prompts over the same harness; the prepare/submit pair lets the client be the model; app tools, streamed deltas and background runs for the desktop. |
+| `@apex-galaxia/desktop` | `apps/desktop`: Tauri 2 shell (Rust: sidecar process, keychain, pickers) and the React frontend (editor, panels, palette, suggestion block, diffs, wizards, views). Talks to the core only through the MCP sidecar (ADR 0010). |
 
 ## The pipeline of one generation
 

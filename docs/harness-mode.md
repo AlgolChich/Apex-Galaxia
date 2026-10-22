@@ -52,7 +52,13 @@ Project: `project_open`, `project_create`, `project_chapters`, `chapter_get`. Bi
 `describe` (model), `rewrite` (model), `canvas_directions` (model), `lessons_propose` (model),
 `lessons_add`, `research_save`, `eval_run`, `export_book`, `weave` (model). Canvas: `canvas_get`,
 `canvas_add`, `canvas_link`, `canvas_remove`, `canvas_template`, `canvas_promote`, `canvas_outline`,
-`canvas_ai` (model). Resources: `apex://project/config`, `apex://project/chronicle/state`,
+`canvas_ai` (model). App (used by the desktop, usable from Claude Code too): `model_status`,
+`chapter_save` (the Author's own edit), `chapter_create`, `project_settings_update`,
+`user_config_get`, `user_config_set`, `bible_list`, `bible_remove`, `plan_get`, `plan_save`,
+`lint_whitelist_add`, `voice_card` (model), `narrator_options`, `run_start` (background, progress
+as logging notifications with logger `apex.run`), `run_pause`, `run_get`, `run_list`.
+`write_continue` and `write_chapter` stream their text as `notifications/progress` when the
+client sends a progress token; `suggestion_accept` takes `edited_text`. Resources: `apex://project/config`, `apex://project/chronicle/state`,
 `apex://project/chronicle/log`, `apex://project/brief`, `apex://project/chapters/{stem}`,
 `apex://project/bible/{kind}/{slug}`, `apex://prompts/{task}`. Prompts: `brief`, `handover`.
 

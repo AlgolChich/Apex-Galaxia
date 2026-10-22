@@ -30,7 +30,8 @@ key, the headless flow below still works: Claude Code itself is the model.
 | `packages/core` | All logic, no UI: project store, Bible, chronicle, context assembler, linter, harness |
 | `packages/adapters` | Anthropic adapter (official SDK) and the record-and-replay adapter for tests |
 | `packages/cli` | The `apex` command |
-| `packages/mcp-server` | MCP server over stdio, registered in `.mcp.json` |
+| `packages/mcp-server` | MCP server over stdio, registered in `.mcp.json`; the desktop's sidecar |
+| `apps/desktop` | Tauri 2 shell + React frontend; talks to the core only through the MCP sidecar (ADR 0010) |
 | `narrators/gwen` | The default narrator profile as data: persona, storytellers, harshness, ratings, brief |
 | `prompts/` | One template per task; `prompts/lang/` holds the Russian and English modules |
 | `style/` | House rules, banned phrases (RU/EN), critic rubric, seed lessons |

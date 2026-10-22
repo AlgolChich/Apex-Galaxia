@@ -3,6 +3,7 @@ import path from 'node:path';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
+  Canvas,
   Chronicle,
   Harness,
   ProjectStore,
@@ -746,6 +747,99 @@ export class ApexMcpServer {
           const store = await this.getStore();
           const saved = await saveResearch(store, markdown, topic);
           return ok({ path: saved.path, topic: saved.topic, sources: saved.front.sources.length, unconfirmed: saved.front.unconfirmed, removed: saved.removed });
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    );
+
+    // ---- Canvas ---------------------------------------------------------------
+    s.registerTool('canvas_get', { title: 'Read the canvas', description: 'The board: template, lanes, cards in reading order with links.', inputSchema: {} }, async () => {
+      try {
+        const canvas = new Canvas(await this.getStore());
+        const board = await canvas.read();
+        return ok({ board, lanes: canvas.lanes(board) }, canvas.render(board));
+      } catch (error) {
+        return fail(error);
+      }
+    });
+    s.registerTool(
+      'canvas_add',
+      { title: 'Add a card', description: 'Add a card to the canvas (kind: idea, scene, arc, twist, branch, question) and optional links to existing cards.', inputSchema: { kind: z.enum(['idea', 'scene', 'arc', 'twist', 'branch', 'question']), title: z.string(), text: z.string().optional(), lane: z.string().optional(), links_to: z.array(z.string()).optional().describe('ids of cards this one connects to') } },
+      async (input) => {
+        try {
+          const canvas = new Canvas(await this.getStore());
+          const card = await canvas.addCard({ kind: input.kind, title: input.title, ...(input.text ? { text: input.text } : {}), ...(input.lane ? { lane: input.lane } : {}) });
+          for (const to of input.links_to ?? []) await canvas.link(card.id, to);
+          return ok(card);
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    );
+    s.registerTool('canvas_link', { title: 'Link cards', description: 'Connect two cards.', inputSchema: { from: z.string(), to: z.string(), label: z.string().optional() } }, async ({ from, to, label }) => {
+      try {
+        await new Canvas(await this.getStore()).link(from, to, label);
+        return ok({ from, to });
+      } catch (error) {
+        return fail(error);
+      }
+    });
+    s.registerTool('canvas_remove', { title: 'Remove a card', description: 'Remove a card and links to it.', inputSchema: { id: z.string() } }, async ({ id }) => {
+      try {
+        await new Canvas(await this.getStore()).removeCard(id);
+        return ok({ id });
+      } catch (error) {
+        return fail(error);
+      }
+    });
+    s.registerTool('canvas_template', { title: 'Set the structure template', description: 'Lanes from a template: none, three_act, heros_journey, save_the_cat, romancing_the_beat, kishotenketsu.', inputSchema: { template: z.enum(['none', 'three_act', 'heros_journey', 'save_the_cat', 'romancing_the_beat', 'kishotenketsu']) } }, async ({ template }) => {
+      try {
+        const lanes = await new Canvas(await this.getStore()).setTemplate(template);
+        return ok({ template, lanes });
+      } catch (error) {
+        return fail(error);
+      }
+    });
+    s.registerTool(
+      'canvas_promote',
+      { title: 'Promote a card', description: 'Turn a card into a Bible entry (kind) or a beat of a chapter plan (chapter).', inputSchema: { id: z.string(), kind: KIND.optional(), chapter: z.number().int().optional() } },
+      async ({ id, kind, chapter }) => {
+        try {
+          const canvas = new Canvas(await this.getStore());
+          if (kind) {
+            const entry = await canvas.promoteToBible(id, kind);
+            return ok({ entry: entry.slug, path: entry.path });
+          }
+          if (chapter !== undefined) {
+            await canvas.promoteToPlan(id, chapter);
+            return ok({ chapter });
+          }
+          return fail(new Error('Pass kind or chapter'));
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    );
+    s.registerTool('canvas_outline', { title: 'Collapse to outline (deterministic)', description: 'One line per card in reading order; write=true saves plan/outline.md.', inputSchema: { write: z.boolean().optional() } }, async ({ write }) => {
+      try {
+        const store = await this.getStore();
+        const canvas = new Canvas(store);
+        const outline = canvas.collapseToOutline(await canvas.read());
+        if (write) await store.writeText(store.layout.plan.outline, `# ${store.config.language === 'ru' ? 'План' : 'Outline'}\n\n${outline}`);
+        return ok({ outline }, outline);
+      } catch (error) {
+        return fail(error);
+      }
+    });
+    s.registerTool(
+      'canvas_ai',
+      { title: 'Canvas AI action (model)', description: 'expand (card), whatif (question), guns (find planted details), collapse (chapter_count). Results are proposals; add confirmed cards with canvas_add.', inputSchema: { action: z.enum(['expand', 'whatif', 'guns', 'collapse']), card: z.string().optional(), question: z.string().optional(), chapter_count: z.number().int().optional() } },
+      async ({ action, card, question, chapter_count }) => {
+        try {
+          const harness = await this.getHarness();
+          const { result } = await harness.canvasAction(action, { ...(card ? { cardId: card } : {}), ...(question ? { question } : {}), ...(chapter_count !== undefined ? { chapterCount: chapter_count } : {}) });
+          return ok(result);
         } catch (error) {
           return fail(error);
         }

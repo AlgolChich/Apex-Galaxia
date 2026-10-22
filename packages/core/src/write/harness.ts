@@ -13,10 +13,13 @@ import { rollD20, type Rng } from '../narrator/dice.js';
 import { loadNarrator, lengthDef, type NarratorProfile } from '../narrator/profile.js';
 import { PromptLibrary } from '../prompts/templates.js';
 import { ProjectStore, type ChapterFile, type SuggestionFile } from '../project/store.js';
+import { Canvas } from '../canvas/board.js';
 import {
   BeatSheetSchema,
   BibleProposalsSchema,
+  CanvasCardsSchema,
   ChaptersPlanSchema,
+  GunsFoundSchema,
   ChronicleProposalSchema,
   CriticResultSchema,
   DescribeOptionsSchema,
@@ -27,6 +30,8 @@ import {
   SummaryFrontMatterSchema,
   schemaByName,
   type BeatSheet,
+  type CanvasCards,
+  type GunsFound,
   type Outline,
   type RunState,
   type BibleProposals,
@@ -854,6 +859,25 @@ export class Harness {
   async voiceCard(sample: string): Promise<{ card: string; run: TaskRun }> {
     const run = await this.runTask({ task: 'voice.card', vars: { sample } }, { maxTokens: 2_000 });
     return { card: run.text, run };
+  }
+
+  /** AI actions on the canvas (Section 4.5). Nothing is added to the board here; the client adds confirmed cards. */
+  async canvasAction(action: 'expand' | 'whatif' | 'guns' | 'collapse', options: { cardId?: string; question?: string; chapterCount?: number } = {}): Promise<{ result: CanvasCards | GunsFound | Outline; run: TaskRun }> {
+    const canvas = new Canvas(this.store);
+    const board = await canvas.read();
+    const rendered = canvas.render(board);
+    const focusCard = options.cardId ? board.cards.find((c) => c.id === options.cardId) : undefined;
+    if (options.cardId && !focusCard) throw new ApexError('INVALID_ARGUMENT', `Card ${options.cardId} not found`);
+    const vars: Record<string, string> = {
+      board: rendered,
+      focus: focusCard ? `[${focusCard.id}] ${focusCard.kind} «${focusCard.title}»: ${focusCard.text}` : 'the whole board',
+      question: options.question ?? '',
+      chapter_count: String(options.chapterCount ?? Math.max(1, lengthDef(this.narrator, this.store.config.length).chapters[1])),
+    };
+    const run = await this.runTask({ task: `canvas.${action}`, plannerView: true, vars }, { maxTokens: 4_000 });
+    if (!run.json) throw new ApexError('CONTRACT_VIOLATION', `No valid canvas result: ${run.violations.join('; ')}`);
+    const result = action === 'guns' ? GunsFoundSchema.parse(run.json) : action === 'collapse' ? OutlineSchema.parse(run.json) : CanvasCardsSchema.parse(run.json);
+    return { result, run };
   }
 
   /** One line per chapter for the Author to approve (long and very long stories, Section 5.6). */

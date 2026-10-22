@@ -12,5 +12,6 @@ pause button, pairwise A/B, canvas board) stay in their phases.
 - [x] `/improve` (`apex improve`, skill): eval, up to three proposed whole-file edits written as a variant, re-run, delta; never applied.
 - [ ] Autonomous mode ASK gate for irreversible choices such as a lead's death at harshness 3: the planner prompt forbids it; a code-level gate needs the critic to flag a death, which is Phase 5 UI work.
 - [ ] Pairwise A/B in the desktop app feeding the eval record (Phase 5 gate).
-- [ ] Canvas board operations (cards, lanes, promote to Bible or plan) and the board UI (Phase 5); `canvas_directions` and `twist` exist.
+- [x] Canvas in the core: cards, links, lanes from the structure templates, deterministic collapse to outline, promotion into Bible entries and chapter plans; AI actions Directions, Expand this arc, What if, Find the gun, Collapse (`apex canvas`, MCP `canvas_*`). The pannable board UI is Phase 3/5.
+- [x] Exports to DOCX and EPUB 3 (Phase 6 item) and Weave for Describe.
 - [ ] Measured proof that the critic loop beats the bare model on the Author's golden set (needs the golden set and an API key).

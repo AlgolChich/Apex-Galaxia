@@ -32,3 +32,4 @@ export * from './write/muse.js';
 export * from './evals/runner.js';
 export * from './evals/improve.js';
 export * from './export/book.js';
+export * from './canvas/board.js';

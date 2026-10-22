@@ -50,7 +50,9 @@ Project: `project_open`, `project_create`, `project_chapters`, `chapter_get`. Bi
 `write_continue` (model), `write_chapter` (model), `plan_chapter` (model), `summarize_chapter`
 (model). Quality: `lint`, `critic_review` (model), `check_bible` (model), `inspect`. Craft:
 `describe` (model), `rewrite` (model), `canvas_directions` (model), `lessons_propose` (model),
-`lessons_add`, `research_save`, `eval_run`. Resources: `apex://project/config`, `apex://project/chronicle/state`,
+`lessons_add`, `research_save`, `eval_run`, `export_book`, `weave` (model). Canvas: `canvas_get`,
+`canvas_add`, `canvas_link`, `canvas_remove`, `canvas_template`, `canvas_promote`, `canvas_outline`,
+`canvas_ai` (model). Resources: `apex://project/config`, `apex://project/chronicle/state`,
 `apex://project/chronicle/log`, `apex://project/brief`, `apex://project/chapters/{stem}`,
 `apex://project/bible/{kind}/{slug}`, `apex://prompts/{task}`. Prompts: `brief`, `handover`.
 

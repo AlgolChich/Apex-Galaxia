@@ -3,6 +3,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import {
   ALL_RULES,
+  Canvas,
   EvalResultsSchema,
   appendLesson,
   applyDiff,
@@ -26,6 +27,8 @@ import {
   runEvalSuite,
   upsertEntry,
   ProjectStore,
+  type BoardTemplate,
+  type Card,
   type CreateProjectOptions,
   type EntryKind,
   type ExportFormat,
@@ -38,6 +41,7 @@ import { cliContext, openHarness, out, printError, type GlobalOptions } from './
 import { makeT } from './i18n.js';
 
 const VERSION = '0.1.0';
+type CardKind = Card['kind'];
 
 function globals(cmd: Command): GlobalOptions {
   return cmd.optsWithGlobals() as GlobalOptions;
@@ -772,6 +776,140 @@ export function buildProgram(): Command {
     });
 
   // ---------------------------------------------------------------------------
+  const canvasCmd = program.command('canvas').description('the canvas: cards, links, lanes, promotion, AI actions (Section 4.5)');
+  canvasCmd
+    .command('list [dir]')
+    .description('cards in reading order')
+    .action(async (dir: string | undefined, _o: unknown, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        const canvas = new Canvas(await ProjectStore.open(ctx.root));
+        const board = await canvas.read();
+        out(ctx, board, () => canvas.render(board));
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  canvasCmd
+    .command('add <kind> <title> [dir]')
+    .description('add a card: kind is idea, scene, arc, twist, branch or question')
+    .option('--text <text>')
+    .option('--lane <lane>')
+    .action(async (kind: string, title: string, dir: string | undefined, opts: { text?: string; lane?: string }, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        const canvas = new Canvas(await ProjectStore.open(ctx.root));
+        const card = await canvas.addCard({ kind: kind as CardKind, title, ...(opts.text ? { text: opts.text } : {}), ...(opts.lane ? { lane: opts.lane } : {}) });
+        out(ctx, card, () => `${card.id} ${card.kind} «${card.title}»`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  canvasCmd
+    .command('link <from> <to> [dir]')
+    .option('--label <text>')
+    .description('connect two cards')
+    .action(async (from: string, to: string, dir: string | undefined, opts: { label?: string }, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        await new Canvas(await ProjectStore.open(ctx.root)).link(from, to, opts.label);
+        out(ctx, { from, to }, () => `${from} → ${to}`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  canvasCmd
+    .command('remove <id> [dir]')
+    .description('remove a card and the links to it')
+    .action(async (id: string, dir: string | undefined, _o: unknown, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        await new Canvas(await ProjectStore.open(ctx.root)).removeCard(id);
+        out(ctx, { id }, () => `removed ${id}`);
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  canvasCmd
+    .command('template <name> [dir]')
+    .description('lanes from a structure template: none, three_act, heros_journey, save_the_cat, romancing_the_beat, kishotenketsu')
+    .action(async (name: string, dir: string | undefined, _o: unknown, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        const lanes = await new Canvas(await ProjectStore.open(ctx.root)).setTemplate(name as BoardTemplate);
+        out(ctx, { template: name, lanes }, () => lanes.join(' | ') || '(no lanes)');
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  canvasCmd
+    .command('promote <id> [dir]')
+    .description('promote a card: --bible <kind> makes an entry; --chapter <n> adds it as a beat of the plan')
+    .option('--bible <kind>')
+    .option('--chapter <n>')
+    .action(async (id: string, dir: string | undefined, opts: { bible?: string; chapter?: string }, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        const canvas = new Canvas(await ProjectStore.open(ctx.root));
+        if (opts.bible) {
+          const entry = await canvas.promoteToBible(id, opts.bible as EntryKind);
+          out(ctx, { entry: entry.slug, path: entry.path }, () => `${ctx.t('entryWritten')}: ${entry.path}`);
+        } else if (opts.chapter) {
+          await canvas.promoteToPlan(id, Number(opts.chapter));
+          out(ctx, { chapter: Number(opts.chapter) }, () => `added to the plan of chapter ${opts.chapter}`);
+        } else {
+          throw new Error('Pass --bible <kind> or --chapter <n>');
+        }
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  canvasCmd
+    .command('outline [dir]')
+    .description('collapse the board to an outline deterministically (no model); --write saves it to plan/outline.md')
+    .option('--write')
+    .action(async (dir: string | undefined, opts: { write?: boolean }, cmd: Command) => {
+      try {
+        const ctx = await cliContext(globals(cmd), dir);
+        const store = await ProjectStore.open(ctx.root);
+        const canvas = new Canvas(store);
+        const outline = canvas.collapseToOutline(await canvas.read());
+        if (opts.write) await store.writeText(store.layout.plan.outline, `# ${store.config.language === 'ru' ? 'План' : 'Outline'}\n\n${outline}`);
+        out(ctx, { outline }, () => outline || '(empty board)');
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+  canvasCmd
+    .command('ai <action> [dir]')
+    .description('AI actions (model): expand (--card), whatif (--question), guns, collapse (--chapters)')
+    .option('--card <id>')
+    .option('--question <text>')
+    .option('--chapters <n>')
+    .action(async (action: string, dir: string | undefined, opts: { card?: string; question?: string; chapters?: string }, cmd: Command) => {
+      try {
+        const g = globals(cmd);
+        const ctx = await cliContext(g, dir);
+        const { harness } = await openHarness(ctx, g);
+        const { result } = await harness.canvasAction(action as 'expand' | 'whatif' | 'guns' | 'collapse', {
+          ...(opts.card ? { cardId: opts.card } : {}),
+          ...(opts.question ? { question: opts.question } : {}),
+          ...(opts.chapters ? { chapterCount: Number(opts.chapters) } : {}),
+        });
+        out(ctx, result, () => JSON.stringify(result, null, 2));
+      } catch (error) {
+        printError(error);
+        process.exitCode = 1;
+      }
+    });
+
   program
     .command('inspect [dir]')
     .description('show the context inspector for a task without calling the model')

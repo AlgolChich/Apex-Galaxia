@@ -430,6 +430,39 @@ export const BoardSchema = z.object({
 });
 export type Board = z.infer<typeof BoardSchema>;
 
+/** Cards an AI canvas action proposes to add (Expand this arc, What if). */
+export const CanvasCardsSchema = z.object({
+  cards: z
+    .array(
+      z.object({
+        kind: CardKindSchema,
+        title: z.string().min(1),
+        text: z.string().default(''),
+        lane: z.string().optional(),
+        /** Titles of existing or proposed cards this one connects to. */
+        links_to: z.array(z.string()).default([]),
+      }),
+    )
+    .min(1),
+  note: z.string().optional(),
+});
+export type CanvasCards = z.infer<typeof CanvasCardsSchema>;
+
+/** «Find the gun»: planted details that can pay off. */
+export const GunsFoundSchema = z.object({
+  guns: z
+    .array(
+      z.object({
+        detail: z.string().min(1),
+        where: z.string().min(1),
+        payoff: z.string().min(1),
+        confidence: z.enum(['low', 'medium', 'high']).default('medium'),
+      }),
+    )
+    .default([]),
+});
+export type GunsFound = z.infer<typeof GunsFoundSchema>;
+
 // ---------------------------------------------------------------------------
 // Model output contracts (Section 10.5)
 // ---------------------------------------------------------------------------
@@ -601,6 +634,8 @@ export const SCHEMA_REGISTRY = {
   'suggestion.frontmatter': SuggestionFrontMatterSchema,
   'lesson': LessonSchema,
   'canvas-board.json': BoardSchema,
+  'canvas-cards': CanvasCardsSchema,
+  'guns-found': GunsFoundSchema,
   'critic-result': CriticResultSchema,
   'bible-proposals': BibleProposalsSchema,
   'beat-sheet': BeatSheetSchema,
